@@ -1,5 +1,0 @@
-# my_node: ''' $here \ $is?some $possible:node \?body '''
-
-my_node: '''
-  |> -100 100 "hello" "he\nllo" "hell\"o"
-'''
