@@ -2,7 +2,7 @@
 
 a [Tree-sitter](https://tree-sitter.github.io/tree-sitter/) and
 [Chibi Scheme](http://synthcode.com/wiki/chibi-scheme) based embedding of
-the Tree-sitter query language in a lisp (scheme) with a set of functions that
+the Tree-sitter query language in a lisp (Scheme) with a set of functions that
 enable transforming programs.
 
 ## Playground
