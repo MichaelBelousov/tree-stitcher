@@ -8,7 +8,7 @@ enable transforming programs.
 ## Playground
 
 You can play with it in your browser at the
-[playground](https://MichaelBelousov.github.io/tree-stitcher/src/playground.html).
+[playground](https://MichaelBelousov.github.io/tree-stitcher/docs/src/playground.html).
 
 ## Thanks to the following open source (direct) dependencies
 
