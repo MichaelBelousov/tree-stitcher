@@ -1,5 +1,6 @@
 // thank you https://zig.news/xq/zig-build-explained-part-1-59lf
 const std = @import("std");
+const chibi_scheme_build = @import("./thirdparty/chibi-scheme/build.zig");
 
 const tree_sitter_pkg = std.build.Pkg{
     .name = "tree-sitter",
@@ -69,11 +70,12 @@ pub fn build(b: *std.build.Builder) void {
     webTarget.os_tag = .wasi;
 
     const webdriver = b.addExecutable("webdriver", "src/driver/main.zig");
+    webdriver.step.dependOn(&patch_chibi_bindings_src.step);
     webdriver.linkLibC();
     webdriver.setTarget(webTarget);
     webdriver.addIncludePath("./src/driver");
     webdriver.addIncludePath("./thirdparty/chibi-scheme/include");
-    webdriver.addCSourceFile("src/chibi_macros.c", &.{"-std=c11", "-DSEXP_USE_DL=0"});
+    webdriver.addCSourceFile("src/chibi_macros.c", &([_][]const u8{"-std=c11"} ++ chibi_scheme_build.c_flags));
     // NOTE: currently this requires manually running make && zig build in thirdparty/chibi-scheme
     webdriver.addLibraryPath("./thirdparty/chibi-scheme/zig-out/lib");
     webdriver.linkSystemLibraryNeeded("chibi-scheme");
@@ -81,8 +83,16 @@ pub fn build(b: *std.build.Builder) void {
         "sexp_eval_string",
         "init", "deinit", "eval_str", "eval_stdin"
     };
-    webdriver.rdynamic = false;
     webdriver.install();
+
+    // TODO: make bindings self-contained
+    webdriver.addPackage(tree_sitter_pkg);
+    webdriver.addIncludePath("../thirdparty/tree-sitter/lib/include");
+    webdriver.addLibraryPath("../thirdparty/tree-sitter");
+
+    // bindings
+    webdriver.addIncludePath("./src"); // FIXME: organize these files
+    webdriver.addCSourceFile("./tree-sitter-chibi-ffi.c", &chibi_scheme_build.c_flags);
 
     // LIFEHACK: how to build and install only one component
     const build_webdriver = b.step("webdriver", "Build the web driver");

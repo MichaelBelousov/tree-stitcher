@@ -13,6 +13,7 @@ const chibi = @cImport({
     }
     @cInclude("../chibi_macros.h");
 });
+const bindings = @import("../chibi_transform.zig");
 
 // FIXME: horrible, errno is different between wasi and emscripten,
 // so we have to declare this to satisfy linker
