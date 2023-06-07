@@ -35,8 +35,13 @@ function handleNativeError(nativeCallResult) {
 
 const defaultProgram = `\
 (transform
+  ; the query
   ((function_definition body: (_) @body))
+
+  ; the transform of that query
   (@body )
+
+  ; the workspace in which to run the query
   (playground-workspace))
 `
 
@@ -67,6 +72,12 @@ langSelect.value = sessionTargetType || 'python'
 
 const output = /** @type {HTMLPreElement} */ (document.querySelector('#output'))
 const runButton = /** @type {HTMLButtonElement} */ (document.querySelector('#run-btn'))
+const defaultTargetButton = /** @type {HTMLButtonElement} */ (document.querySelector('#default-target-btn'))
+const defaultProgramButton = /** @type {HTMLButtonElement} */ (document.querySelector('#default-program-btn'))
+
+defaultTargetButton.addEventListener("click", () => targetEditor.value = defaultTarget)
+
+defaultProgramButton.addEventListener("click", () => programEditor.value = defaultProgram)
 
 targetEditor.addEventListener('change', (e) => {
   sessionTarget = e.currentTarget.value

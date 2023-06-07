@@ -17,10 +17,18 @@ body {
     "header header"
     "program target"
     "output output";
-  grid-template-columns: auto auto;
+  grid-template-columns: 1fr 1fr;
   grid-template-rows: auto 1fr 1fr;
   height: 100vh;
   width: 100vw;
+}
+
+.inline {
+  display: block;
+}
+
+.inline > * {
+  display: inline;
 }
 
 .pane {
@@ -39,10 +47,6 @@ body {
 .editor {
   width: 100%;
   height: calc(100% - 90px);
-}
-
-#run-btn {
-  display: block;
 }
 
 #target-pane {
