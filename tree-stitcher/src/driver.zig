@@ -6,21 +6,24 @@
 
 const std = @import("std");
 const builtin = @import("builtin");
+const chibi_transform_funcs = @import("./chibi_transform.zig");
+const bindings = @import("./bindings.zig");
+const ts = @import("tree-sitter");
+
 // FIXME: create a package of chibi bindings
 const chibi = @cImport({
     if (builtin.os.tag == .wasi) {
         @cDefine("SEXP_USE_DL", "0");
     }
-    @cInclude("../chibi_macros.h");
+    @cInclude("chibi_macros.h");
 });
-const bindings = @import("../chibi_transform.zig");
 
 // FIXME: horrible, errno is different between wasi and emscripten,
 // so we have to declare this to satisfy linker
 // this issue https://github.com/WebAssembly/wasi-libc/issues/411
 extern "C" var errno: c_long;
 
-export var chibi_ctx: chibi.sexp = null;
+var chibi_ctx: chibi.sexp = null;
 
 // TODO: consider using a different allocator
 var allocator = std.heap.c_allocator;
@@ -97,12 +100,18 @@ export fn eval_str(buf_ptr: [*]const u8, _buf_len: i32) void {
     chibi._sexp_debug(chibi_ctx, "", result);
 }
 
+// TODO: should probably handle stdin chunks the way that `main` does currently
 export fn eval_stdin() u16 {
     var line_buff: [1024]u8 = undefined;
     const bytes_read = std.io.getStdIn().read(&line_buff) catch |e| return @errorToInt(e);
     const result = chibi.sexp_eval_string(chibi_ctx, &line_buff, @intCast(c_int, bytes_read), null);
     chibi._sexp_debug(chibi_ctx, "", result);
     return 0;
+}
+
+
+export fn set_language(in_language: ?*const fn() *ts.c_api.TSLanguage) void {
+    bindings.set_language(in_language);
 }
 
 pub fn main() !void {

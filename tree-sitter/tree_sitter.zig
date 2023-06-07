@@ -3,10 +3,12 @@
 
 const std = @import("std");
 
-const c_api = @cImport({
+pub const c_api = @cImport({
     @cInclude("tree_sitter/api.h");
 });
 
+// TODO: prefer c_api, make this non-pub
+/// deprecated
 pub const _c = c_api;
 
 pub const InputEncoding = enum(c_api.TSInputEncoding) {
@@ -519,8 +521,10 @@ test "TreeCursor" {
 // c++ support
 extern fn tree_sitter_cpp() callconv(.C) *c_api.TSLanguage;
 
+// TODO: remove this and dependency on tree_sitter_cpp,
+// languages it should be loaded at runtime
 // maybe make this a field and statically initialize it?
 pub fn cpp() Language {
-    return Language{._c = tree_sitter_cpp() };
+    return Language{._c = tree_sitter_cpp()};
 }
 

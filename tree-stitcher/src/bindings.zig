@@ -2,7 +2,7 @@
 
 const std = @import("std");
 const ts = @import("tree-sitter");
-const mman = @cImport({ @cInclude("sys/mman.h"); });
+const FileBuffer = @import("./FileBuffer.zig");
 
 pub const ExecQueryResult = struct {
     parse_tree: ts.Tree,
@@ -129,6 +129,16 @@ pub const Workspace = extern struct {
     files: [][]const u8,
 };
 
+var _active_language: ?*const fn() *ts.c_api.TSLanguage = null;
+
+pub fn set_language(in_language: ?*const fn() *ts.c_api.TSLanguage) void {
+    if (in_language) |lang| {
+        _active_language = lang;
+    } else {
+        std.debug.print("tried to set null language", .{});
+    }
+}
+
 /// Caller must use libc free to free each object pointed to by the returned list,
 /// as well as the returned list itself
 export fn exec_query(
@@ -139,44 +149,43 @@ export fn exec_query(
     const query = in_query[0..query_len];
 
     // FIXME: replace these catches
-    const file = std.fs.cwd().openFileZ(srcs[0], .{}) catch |err| {
-      std.debug.print("error '{any}' opening file: '{s}'\n", .{err, srcs[0]});
-      const cwd = std.fs.cwd().realpathAlloc(std.heap.c_allocator, ".") catch return null;
-      defer std.heap.c_allocator.free(cwd);
-      std.debug.print("was in cwd: '{s}'\n", .{cwd});
-      return null;
-    };
-
-    // compiler error
-    //_ = std.mem.len(srcs);
-    defer file.close();
-
-    var file_len = (file.stat() catch unreachable).size;
-
     var result = std.heap.c_allocator.create(ExecQueryResult) catch unreachable;
 
     result.capture_name_to_index = std.StringHashMap(u32).init(std.heap.c_allocator);
     captureIndicesFromQueryStr(query, &result.capture_name_to_index);
 
-    var src_ptr = @alignCast(
-        std.mem.page_size,
-        std.c.mmap(null, file_len, mman.PROT_READ, mman.MAP_FILE | mman.MAP_SHARED, file.handle, 0)
-    );
+    const path_len = std.mem.len(srcs[0]);
+    // FIXME: don't use realpath, just some path join operation
+    const abs_path = std.fs.cwd().realpathAlloc(std.heap.c_allocator, srcs[0][0..path_len]) catch |err| {
+      std.debug.print("error '{}' realpath-ing file: '{s}'\n", .{err, srcs[0]});
+      const cwd = std.fs.cwd().realpathAlloc(std.heap.c_allocator, ".") catch return null;
+      defer std.heap.c_allocator.free(cwd);
+      std.debug.print("was in cwd: '{s}'\n", .{cwd});
+      return null;
+    };
+    defer std.heap.c_allocator.free(abs_path);
 
-    if (src_ptr == mman.MAP_FAILED) {
-        var mmap_result = std.c.getErrno(@ptrToInt(src_ptr));
-        if (mmap_result != .SUCCESS) {
-            std.debug.print("mmap errno: {any}\n", .{ mmap_result });
-            @panic("mmap failed");
-        }
-    }
+    var file = FileBuffer.from_path(std.heap.c_allocator, abs_path) catch |err| {
+      std.debug.print("error '{any}' opening file: '{s}'\n", .{err, srcs[0]});
+      return null;
+    };
 
-    result.buff = @ptrCast([*]const u8, src_ptr)[0..file_len];
+    result.buff = file.buffer;
 
     const parser = ts.Parser.new();
     defer parser.free();
-    if (!parser.set_language(ts.cpp()))
-        @panic("couldn't set cpp lang");
+
+
+    const language =
+        if (_active_language) |lang| ts.Language{._c = lang()}
+        else {
+            // FIXME: error handling
+            std.debug.print("_active_language was null", .{});
+            @panic("_active_language was null");
+        };
+
+    if (!parser.set_language(language))
+        @panic("couldn't set lang");
 
     result.parse_tree = parser.parse_string(null, result.buff);
     const root = result.parse_tree.root_node();

@@ -69,11 +69,10 @@ pub fn build(b: *std.build.Builder) void {
     webTarget.cpu_arch = .wasm32;
     webTarget.os_tag = .wasi;
 
-    const webdriver = b.addExecutable("webdriver", "src/driver/main.zig");
+    const webdriver = b.addExecutable("webdriver", "src/driver.zig");
     webdriver.step.dependOn(&patch_chibi_bindings_src.step);
     webdriver.linkLibC();
     webdriver.setTarget(webTarget);
-    webdriver.addIncludePath("./src/driver");
     webdriver.addIncludePath("./thirdparty/chibi-scheme/include");
     webdriver.addCSourceFile("src/chibi_macros.c", &([_][]const u8{"-std=c11"} ++ chibi_scheme_build.c_flags));
     // NOTE: currently this requires manually running make && zig build in thirdparty/chibi-scheme
@@ -81,7 +80,8 @@ pub fn build(b: *std.build.Builder) void {
     webdriver.linkSystemLibraryNeeded("chibi-scheme");
     webdriver.export_symbol_names = &.{
         "sexp_eval_string",
-        "init", "deinit", "eval_str", "eval_stdin"
+        "init", "deinit", "eval_str", "eval_stdin",
+        "set_language",
     };
     webdriver.install();
 

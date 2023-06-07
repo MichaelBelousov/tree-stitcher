@@ -1,0 +1,55 @@
+const builtin = @import("builtin");
+const std = @import("std");
+// not used and therefore ignored off posix
+const mman = @cImport({ @cInclude("sys/mman.h"); });
+
+buffer: []const u8,
+
+const Self = @This();
+
+pub fn from_path(alloc: std.mem.Allocator, path: []const u8) !Self {
+    const file = try std.fs.openFileAbsolute(path, .{});
+    defer file.close();
+    const file_len = (try file.stat()).size;
+
+    switch (builtin.os.tag) {
+        .windows, .wasi => {
+            const buffer = try alloc.alloc(u8, @intCast(usize, file_len));
+            _ = try file.readAll(buffer);
+            return Self{ .buffer = buffer };
+        },
+        // assuming posix currently
+        else => {
+            var src_ptr = @alignCast(
+                std.mem.page_size,
+                std.c.mmap(null, file_len, mman.PROT_READ, mman.MAP_FILE | mman.MAP_SHARED, file.handle, 0)
+            );
+
+            if (src_ptr == mman.MAP_FAILED) {
+                var mmap_result = std.c.getErrno(@ptrToInt(src_ptr));
+                if (mmap_result != .SUCCESS) {
+                    std.debug.print("mmap errno: {any}\n", .{ mmap_result });
+                    @panic("mmap failed");
+                }
+            }
+
+            const buffer = @ptrCast([*]const u8, src_ptr)[0..file_len];
+            return Self{ .buffer = buffer };
+        }
+    }
+}
+
+pub fn free(self: Self, alloc: std.mem.Allocator) !void {
+    switch (builtin.os.tag) {
+        .windows => {
+            alloc.free(self.buffer);
+        },
+        else => {
+            const munmap_result = std.c.munmap(@alignCast(std.mem.page_size, self.buffer.ptr), self.buffer.len);
+            const errno = std.c.getErrno(munmap_result);
+            if (errno != .SUCCESS)
+                std.log.err("munmap errno: {any}", .{ errno });
+            return errno;
+        }
+    }
+}
