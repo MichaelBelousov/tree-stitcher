@@ -6,9 +6,10 @@ a "workspace" using embedded tree-sitter queries and real scheme code.
 
 ## Building
 
-Hopefully just
-
 ```sh
+# make sure submodules were cloned
+# git submodule update --init
+(cd chibi-scheme && make && zig build)
 zig build
 ```
 
@@ -27,8 +28,7 @@ zig build
 - better define workspaces for a sample language (e.g. TypeScript package.json + tsconfig.json)
 - better decouple logic in zig from ffi bindings to allow porting to other lisps
 - generate AST builder scheme functions from `src/node_types.json`
-- create a playground webpage so people don't need to download it to run it (would be great to use
-  Monaco editor with LSP)
+- add a monaco editor with an LSP or something to the playground
 - create an interpreter and a REPL for interactively performing transformations across a "workspace",
   viewing transform patches, and confirming them, `git checkout --patch` style.
 - prototype reference detection and renaming for a sample language
