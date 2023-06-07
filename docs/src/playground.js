@@ -96,44 +96,14 @@ programEditor.addEventListener('keydown', (e) => {
 })
 
 
-/** @type {typeof import('web-tree-sitter')} */
-// @ts-ignore
-const Parser = window.TreeSitter
-assert(Parser, 'tree-sitter was not already loaded')
-
-const parserInit = Parser.init({
-  locateFile() {
-    // NOTE: these url's are no where guaranteed to be stable, but something tells me it
-    // won't break for a while, and then I can switch to a cdn
-    return 'https://tree-sitter.github.io/tree-sitter.wasm'
-  },
-})
-
 /** @type {{[lang: string]: Promise<any>}} */
 const languages = {}
-
-langSelect.addEventListener('change', async (e) => {
-  const langTag = e.currentTarget.value
-  sessionStorage.setItem('target-type', langTag)
-  let langParser = languages[langTag]
-
-  if (langParser === undefined) {
-    await parserInit
-    languages[langTag] = Parser.Language
-      .load(`https://tree-sitter.github.io/tree-sitter-${langTag}.wasm`)
-      .then((lang) => {
-        // FIXME: do I need a parser? will find out
-        const langParser = new Parser()
-        langParser.setLanguage(lang)
-        return langParser
-      })
-  }
-})
 
 // apparently their native esm bindings require a buffer polyfill
 //import { Buffer } from 'https://cdn.jsdelivr.net/npm/buffer@6.0.3/+esm'
 //window.Buffer = Buffer
 import * as _wasmer from 'https://cdn.jsdelivr.net/npm/@wasmer/wasi@1.2.2/+esm'
+import { LanguageLoader } from './LanguageLoader.js'
 
 /** @type {typeof import('@wasmer/wasi')} */
 const wasmer = _wasmer
@@ -196,6 +166,20 @@ async function main() {
     handleNativeError(inst.exports.eval_stdin())
     output.textContent = wasi.getStdoutString() + '\n'
   })
+
+  langSelect.addEventListener('change', async (e) => {
+    const langTag = e.currentTarget.value
+    sessionStorage.setItem('target-type', langTag)
+    let langParser = languages[langTag]
+
+    if (langParser === undefined) {
+      const langUrl = `https://tree-sitter.github.io/tree-sitter-${langTag}.wasm`;
+      await LanguageLoader.load(wasi, langUrl)
+    }
+  })
+
+  // force rerun listener to load
+  langSelect.value = langSelect.value;
 }
 
 main().catch((err) => { alert(err, wasi.getStderrString()); throw err })
