@@ -131,11 +131,13 @@ pub const Workspace = extern struct {
 
 var _active_language: ?*const fn() *ts.c_api.TSLanguage = null;
 
-pub fn set_language(in_language: ?*const fn() *ts.c_api.TSLanguage) void {
+pub fn set_language(in_language: ?*const fn() *ts.c_api.TSLanguage) bool {
     if (in_language) |lang| {
         _active_language = lang;
+        return true;
     } else {
         std.debug.print("tried to set null language", .{});
+        return false;
     }
 }
 

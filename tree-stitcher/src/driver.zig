@@ -16,6 +16,7 @@ const chibi = @cImport({
         @cDefine("SEXP_USE_DL", "0");
     }
     @cInclude("chibi_macros.h");
+    @cInclude("dlfcn.h");
 });
 
 // FIXME: horrible, errno is different between wasi and emscripten,
@@ -31,6 +32,30 @@ var allocator = std.heap.c_allocator;
 var preopens: std.fs.wasi.PreopenList = undefined;
 
 var target_buf: []u8 = undefined;
+
+export fn loadAndSetLanguage(in_path: ?[*:0]const u8, in_sym: ?[*:0]const u8) bool {
+    const path = in_path orelse {
+        std.debug.print("loadAndSetLanguage path arg was null\n", .{});
+        return false;
+    };
+
+    const sym = in_sym orelse {
+        std.debug.print("loadAndSetLanguage sym arg was null\n", .{});
+        return false;
+    };
+
+    const dll = std.c.dlopen(path, chibi.RTLD_NOW) orelse {
+        std.debug.print("failed to dlopen '{s}'", .{ path[0..std.mem.len(path)] });
+        return false;
+    };
+
+    const func = std.c.dlsym(dll, sym) orelse {
+        std.debug.print("failed to dlsym '{s}'", .{ sym[0..std.mem.len(sym)] });
+        return false;
+    };
+
+    return bindings.set_language(@ptrCast(?*const fn() *ts.c_api.TSLanguage, func));
+}
 
 export fn init() u16 {
     // const args = std.process.argsAlloc(allocator) catch |e| {
@@ -109,10 +134,6 @@ export fn eval_stdin() u16 {
     return 0;
 }
 
-
-export fn set_language(in_language: ?*const fn() *ts.c_api.TSLanguage) void {
-    bindings.set_language(in_language);
-}
 
 pub fn main() !void {
     const init_result = init();
