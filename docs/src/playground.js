@@ -186,6 +186,7 @@ async function main() {
 
   langSelect.addEventListener('change', async (e) => {
     const langTag = e.currentTarget.value
+    if (!langTag) return;
     sessionStorage.setItem('target-type', langTag)
     inst.exports[`load_${langTag}`]()
     // TODO: runtime code loading
@@ -198,7 +199,8 @@ async function main() {
   })
 
   // force rerun listener to load
-  langSelect.value = langSelect.value;
+  const loadInitLangEvent = new Event('change');
+  langSelect.dispatchEvent(loadInitLangEvent);
 }
 
 main().catch((err) => { alert(err, wasi.getStderrString()); throw err })
