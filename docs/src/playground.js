@@ -103,10 +103,11 @@ const languages = {}
 //import { Buffer } from 'https://cdn.jsdelivr.net/npm/buffer@6.0.3/+esm'
 //window.Buffer = Buffer
 import * as _wasmer from 'https://cdn.jsdelivr.net/npm/@wasmer/wasi@1.2.2/+esm'
-import { LanguageLoader } from './LanguageLoader.js'
 
 /** @type {typeof import('@wasmer/wasi')} */
 const wasmer = _wasmer
+
+import { LanguageLoader } from './LanguageLoader.js'
 
 /** @type {import('@wasmer/wasi').WASI} */
 let wasi
@@ -174,7 +175,7 @@ async function main() {
 
     if (langParser === undefined) {
       const langUrl = `https://tree-sitter.github.io/tree-sitter-${langTag}.wasm`;
-      await LanguageLoader.load(wasi, langUrl)
+      await LanguageLoader.load(wasi, inst, langUrl)
     }
   })
 
