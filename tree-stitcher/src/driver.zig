@@ -32,29 +32,34 @@ var preopens: std.fs.wasi.PreopenList = undefined;
 
 var target_buf: []u8 = undefined;
 
-export fn loadAndSetLanguage(in_path: ?[*:0]const u8, in_sym: ?[*:0]const u8) bool {
-    const path = in_path orelse {
-        std.debug.print("loadAndSetLanguage path arg was null\n", .{});
-        return false;
-    };
+// no dynamic language loading yet :/
+// export fn loadAndSetLanguage(in_path: ?[*:0]const u8, in_sym: ?[*:0]const u8) bool {
+//     const path = in_path orelse {
+//         std.debug.print("loadAndSetLanguage path arg was null\n", .{});
+//         return false;
+//     };
+//     const sym = in_sym orelse {
+//         std.debug.print("loadAndSetLanguage sym arg was null\n", .{});
+//         return false;
+//     };
+//     const dll = std.c.dlopen(path, c.RTLD_NOW) orelse {
+//         std.debug.print("failed to dlopen '{s}'", .{ path[0..std.mem.len(path)] });
+//         return false;
+//     };
+//     const func = std.c.dlsym(dll, sym) orelse {
+//         std.debug.print("failed to dlsym '{s}'", .{ sym[0..std.mem.len(sym)] });
+//         return false;
+//     };
+//     return bindings.set_language(@ptrCast(?*const fn() *ts.c_api.TSLanguage, func));
+// }
 
-    const sym = in_sym orelse {
-        std.debug.print("loadAndSetLanguage sym arg was null\n", .{});
-        return false;
-    };
+extern fn tree_sitter_cpp() *ts.c_api.TSLanguage;
+extern fn tree_sitter_python() *ts.c_api.TSLanguage;
+extern fn tree_sitter_javascript() *ts.c_api.TSLanguage;
 
-    const dll = std.c.dlopen(path, c.RTLD_NOW) orelse {
-        std.debug.print("failed to dlopen '{s}'", .{ path[0..std.mem.len(path)] });
-        return false;
-    };
-
-    const func = std.c.dlsym(dll, sym) orelse {
-        std.debug.print("failed to dlsym '{s}'", .{ sym[0..std.mem.len(sym)] });
-        return false;
-    };
-
-    return bindings.set_language(@ptrCast(?*const fn() *ts.c_api.TSLanguage, func));
-}
+export fn load_cpp() void { return bindings.set_language(tree_sitter_cpp()); }
+export fn load_python() void { return bindings.set_language(tree_sitter_python()); }
+export fn load_javascript() void { return bindings.set_language(tree_sitter_javascript()); }
 
 export fn init() u16 {
     // const args = std.process.argsAlloc(allocator) catch |e| {

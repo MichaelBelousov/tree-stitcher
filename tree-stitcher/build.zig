@@ -70,6 +70,7 @@ pub fn build(b: *std.build.Builder) void {
     webTarget.os_tag = .wasi;
 
     const webdriver = b.addExecutable("webdriver", "src/driver.zig");
+    webdriver.setBuildMode(.ReleaseSmall);
     webdriver.step.dependOn(&patch_chibi_bindings_src.step);
     webdriver.linkLibC();
     webdriver.setTarget(webTarget);
@@ -81,7 +82,8 @@ pub fn build(b: *std.build.Builder) void {
     webdriver.export_symbol_names = &.{
         "sexp_eval_string",
         "init", "deinit", "eval_str", "eval_stdin",
-        "loadAndSetLanguage",
+        // languages
+        "load_cpp", "load_python", "load_javascript",
     };
     webdriver.install();
 
@@ -89,6 +91,24 @@ pub fn build(b: *std.build.Builder) void {
     webdriver.addPackage(tree_sitter_pkg);
     webdriver.addIncludePath("../thirdparty/tree-sitter/lib/include");
     webdriver.addLibraryPath("../thirdparty/tree-sitter");
+
+    // whhheeeeeee add all the supported languages!
+    // TODO: figure out how to wasi-load emscripten side-modules so I can use existing compiled
+    // grammars, because wasi doesn't seem to support dlopen or any runtime code loading
+
+    // FIXME: These require running `npm build install && npx tree-sitter generate`
+    // in each directory. Some also require a C++ scanner for some reason
+    webdriver.linkSystemLibrary("c++");
+
+    // cpp
+    webdriver.addCSourceFile("../thirdparty/tree-sitter-cpp/src/parser.c", &.{"-std=c99"});
+    webdriver.addCSourceFile("../thirdparty/tree-sitter-cpp/src/scanner.cc", &.{"-std=c++14"});
+    // python
+    webdriver.addCSourceFile("../thirdparty/tree-sitter-python/src/parser.c", &.{"-std=c99"});
+    webdriver.addCSourceFile("../thirdparty/tree-sitter-python/src/scanner.cc", &.{"-std=c++14"});
+    // javascript
+    webdriver.addCSourceFile("../thirdparty/tree-sitter-javascript/src/parser.c", &.{"-std=c99"});
+    webdriver.addCSourceFile("../thirdparty/tree-sitter-javascript/src/scanner.c", &.{"-std=c99"});
 
     // bindings
     webdriver.addIncludePath("./src"); // FIXME: organize these files

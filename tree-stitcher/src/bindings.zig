@@ -129,16 +129,10 @@ pub const Workspace = extern struct {
     files: [][]const u8,
 };
 
-var _active_language: ?*const fn() *ts.c_api.TSLanguage = null;
+var _active_language: ?*ts.c_api.TSLanguage = null;
 
-pub fn set_language(in_language: ?*const fn() *ts.c_api.TSLanguage) bool {
-    if (in_language) |lang| {
-        _active_language = lang;
-        return true;
-    } else {
-        std.debug.print("tried to set null language", .{});
-        return false;
-    }
+pub fn set_language(in_language: *ts.c_api.TSLanguage) void {
+    _active_language = in_language;
 }
 
 /// Caller must use libc free to free each object pointed to by the returned list,
@@ -179,7 +173,7 @@ export fn exec_query(
 
 
     const language =
-        if (_active_language) |lang| ts.Language{._c = lang()}
+        if (_active_language) |lang| ts.Language{._c = lang}
         else {
             // FIXME: error handling
             std.debug.print("_active_language was null", .{});
