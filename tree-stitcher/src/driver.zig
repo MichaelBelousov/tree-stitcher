@@ -19,10 +19,9 @@ const chibi = @cImport({
     @cInclude("dlfcn.h");
 });
 
-// FIXME: horrible, errno is different between wasi and emscripten,
-// so we have to declare this to satisfy linker
-// this issue https://github.com/WebAssembly/wasi-libc/issues/411
-extern "C" var errno: c_long;
+/// alias for the c import to use when using non-chibi C apis
+/// this chibi import should really be replaced with a properly wrapping package
+const c = chibi;
 
 var chibi_ctx: chibi.sexp = null;
 
@@ -44,7 +43,7 @@ export fn loadAndSetLanguage(in_path: ?[*:0]const u8, in_sym: ?[*:0]const u8) bo
         return false;
     };
 
-    const dll = std.c.dlopen(path, chibi.RTLD_NOW) orelse {
+    const dll = std.c.dlopen(path, c.RTLD_NOW) orelse {
         std.debug.print("failed to dlopen '{s}'", .{ path[0..std.mem.len(path)] });
         return false;
     };
