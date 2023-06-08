@@ -107,8 +107,6 @@ import * as _wasmer from 'https://cdn.jsdelivr.net/npm/@wasmer/wasi@1.2.2/+esm'
 /** @type {typeof import('@wasmer/wasi')} */
 const wasmer = _wasmer
 
-import { LanguageLoader } from './LanguageLoader.js'
-
 /** @type {import('@wasmer/wasi').WASI} */
 let wasi
 
@@ -117,20 +115,37 @@ let wasi
  */
 async function loadFileSystem(fs) {
   const files = [
-    "init-7.scm",
-    "meta-7.scm",
+    ['https://raw.githubusercontent.com/MichaelBelousov/chibi-scheme/master/lib/init-7.scm', '/chibi'],
+    ['https://raw.githubusercontent.com/MichaelBelousov/chibi-scheme/master/lib/meta-7.scm', '/chibi'],
+    ['/tree-stitcher/src/langs/support.scm', '/src/langs'],
+    ['/tree-stitcher/src/langs/cpp.scm', '/src/langs'],
+    ['/tree-stitcher/src/query.scm', '/src'],
   ]
 
-  fs.createDir("/chibi")
+  /**
+   * Like `mkdir -p`
+   * @param {string} dir
+   */
+  function mkdirp(dir) {
+    assert(dir.startsWith("/"), "dir must be absolute");
+    const segments = dir.split('/');
+    for (let i = 2; i < segments.length + 1; ++i) {
+      // TODO: cache and avoid extra createDir?
+      fs.createDir("/" + segments.slice(1, i).join('/'))
+    }
+  }
 
   await Promise.all(
-    files.map(f => fetch(`chibi-data/${f}`)
-      .then(resp => resp.arrayBuffer())
-      .then(buff => {
-        // FIXME: support nested files by emulating mkdir -p
-        const file = fs.open(`/chibi/${f}`, { write: true, create: true })
-        file.write(new Uint8Array(buff))
-      })
+    files
+      .map(([f, dir]) => fetch(f)
+        .then(resp => resp.arrayBuffer())
+        .then(buff => {
+          const basename = f.split('/').pop()
+          const destination = `${dir}/${basename}`
+          mkdirp(dir);
+          const file = fs.open(destination, { write: true, create: true })
+          file.write(new Uint8Array(buff))
+        })
     )
   )
 }
@@ -171,12 +186,14 @@ async function main() {
   langSelect.addEventListener('change', async (e) => {
     const langTag = e.currentTarget.value
     sessionStorage.setItem('target-type', langTag)
-    let langParser = languages[langTag]
-
+    inst.exports[`load_${langTag}`]()
+    // TODO: runtime code loading
+    /*
     if (langParser === undefined) {
       const langUrl = `https://tree-sitter.github.io/tree-sitter-${langTag}.wasm`;
       await LanguageLoader.load(wasi, inst, langUrl)
     }
+    */
   })
 
   // force rerun listener to load
