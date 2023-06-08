@@ -16,5 +16,6 @@ without which this would be impossible.
 
 - [Chibi Scheme](http://synthcode.com/wiki/chibi-scheme)
 - [Tree-sitter](https://tree-sitter.github.io/tree-sitter/)
+- [Wasmer-js](https://github.com/wasmerio/wasmer-js)
 - [Zig](https://ziglang.org/)
 
