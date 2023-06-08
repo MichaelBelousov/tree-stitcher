@@ -81,7 +81,7 @@ pub fn build(b: *std.build.Builder) void {
     webdriver.export_symbol_names = &.{
         "sexp_eval_string",
         "init", "deinit", "eval_str", "eval_stdin",
-        "set_language",
+        "loadAndSetLanguage",
     };
     webdriver.install();
 
