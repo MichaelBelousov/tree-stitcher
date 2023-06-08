@@ -32,7 +32,7 @@ const sexp = union (enum) {
 };
 
 /// A buffer that contains the entire contents of a file
-const FileBuffer = @import("../FileBuffer.zig");
+const FileBuffer = @import("./FileBuffer.zig");
 
 const Grammar = struct {
     name: []const u8,

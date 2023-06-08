@@ -38,7 +38,7 @@ pub fn build(b: *std.build.Builder) void {
     exe.step.dependOn(tree_sitter_step);
     exe.setTarget(target);
 
-    const ast_helper_gen_exe = b.addExecutable("ast-helper-gen", "src/ast_helper_gen/main.zig");
+    const ast_helper_gen_exe = b.addExecutable("ast-helper-gen", "src/ast_helper_gen.zig");
     ast_helper_gen_exe.setTarget(target);
     ast_helper_gen_exe.addPackage(zig_clap_package);
     ast_helper_gen_exe.linkLibC();
