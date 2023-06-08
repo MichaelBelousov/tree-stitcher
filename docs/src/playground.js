@@ -119,7 +119,8 @@ async function loadFileSystem(fs) {
     ['https://raw.githubusercontent.com/MichaelBelousov/chibi-scheme/master/lib/meta-7.scm', '/chibi'],
     ['/tree-stitcher/src/langs/support.scm', '/src/langs'],
     ['/tree-stitcher/src/langs/cpp.scm', '/src/langs'],
-    ['/tree-stitcher/src/query.scm', '/src'],
+    ['/tree-stitcher/src/chibi-lib/sizr/transform.scm', '/chibi/sizr/transform.scm'],
+    ['/tree-stitcher/src/chibi-lib/sizr/transform.sld', '/chibi/sizr/transform.sld'],
   ]
 
   /**

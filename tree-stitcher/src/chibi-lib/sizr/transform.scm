@@ -1,9 +1,6 @@
 ;#!r7rs
 (import (scheme small))
 
-;; TODO: relative non-cwd load
-(load "zig-out/lib/libbindings.so")
-
 (define (expr->string e)
   (call-with-port
     (open-output-string)
