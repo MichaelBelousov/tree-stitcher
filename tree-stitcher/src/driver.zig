@@ -110,8 +110,20 @@ export fn init() u16 {
     chibi.sexp_scheme_init();
 
     chibi_ctx = chibi.sexp_make_eval_context(null, null, null, 0, 0);
-    _ = chibi.sexp_load_standard_env(chibi_ctx, null, chibi.SEXP_SEVEN);
-    _ = chibi.sexp_load_standard_ports(chibi_ctx, null, chibi.stdin, chibi.stdout, chibi.stdout, 1);
+
+    if (chibi._sexp_exceptionp(
+            chibi.sexp_load_standard_env(chibi_ctx, null, chibi.SEXP_SEVEN)
+    ) != 0) {
+        std.debug.print("exp_load_standard_env err", .{});
+        return @errorToInt(error.ChibiLoadErr);
+    }
+
+    if (chibi._sexp_exceptionp(
+            chibi.sexp_load_standard_ports(chibi_ctx, null, chibi.stdin, chibi.stdout, chibi.stdout, 1)
+    ) != 0) {
+        std.debug.print("exp_load_standard_env err", .{});
+        return @errorToInt(error.ChibiLoadErr);
+    }
 
     return 0;
 }
