@@ -21,7 +21,11 @@ sexp _sexp_reverse(sexp ctx, sexp ls);
 sexp _sexp_append2(sexp ctx, sexp a, sexp b);
 sexp _sexp_list2(sexp ctx, sexp a, sexp b);
 void _sexp_print_exception(sexp ctx, sexp exn, sexp out_port);
+void _sexp_write(sexp ctx, sexp obj, sexp port);
+void _sexp_write_char(sexp ctx, char c, sexp port);
+void _sexp_flush(sexp ctx, sexp port);
 sexp _sexp_current_error_port(sexp ctx);
+sexp _sexp_current_output_port(sexp ctx);
 sexp _sexp_equalp(sexp ctx, sexp a, sexp b);
 
 // non-macro translation helpers

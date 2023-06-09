@@ -22,7 +22,11 @@ sexp _sexp_reverse(sexp ctx, sexp ls) { return sexp_reverse(ctx, ls); }
 sexp _sexp_append2(sexp ctx, sexp a, sexp b) { return sexp_append2(ctx, a, b); }
 sexp _sexp_list2(sexp ctx, sexp a, sexp b) { return sexp_list2(ctx, a, b); }
 void _sexp_print_exception(sexp ctx, sexp exn, sexp out_port) { sexp_print_exception(ctx, exn, out_port); }
+void _sexp_write(sexp ctx, sexp obj, sexp port) { sexp_write(ctx, obj, port); }
+void _sexp_write_char(sexp ctx, char c, sexp port) { sexp_write_char(ctx, c, port); }
+void _sexp_flush(sexp ctx, sexp port) { sexp_flush(ctx, port); }
 sexp _sexp_current_error_port(sexp ctx) { return sexp_current_error_port(ctx); }
+sexp _sexp_current_output_port(sexp ctx) { return sexp_current_output_port(ctx); }
 sexp _sexp_equalp(sexp ctx, sexp a, sexp b) { return sexp_equalp(ctx, a, b); }
 
 // non-macro translation helpers

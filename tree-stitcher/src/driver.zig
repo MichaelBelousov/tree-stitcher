@@ -125,6 +125,8 @@ export fn init() u16 {
         return @errorToInt(error.ChibiLoadErr);
     }
 
+    //chibi.sexp_global(ctx, chibi.SEXP_G_STRICT_P) = chibi.SEXP_TRUE;
+
     return 0;
 }
 
@@ -134,11 +136,20 @@ export fn deinit() void {
     allocator.free(target_buf);
 }
 
+// TODO: remove...
 // this blog demonstrates how I should implement usage of this function in the browser with wasmer
 // https://mnt.io/2018/08/22/from-rust-to-beyond-the-webassembly-galaxy/
 export fn eval_str(buf_ptr: [*]const u8, _buf_len: i32) void {
     const result = chibi.sexp_eval_string(chibi_ctx, buf_ptr, @intCast(c_int, _buf_len), null);
-    chibi._sexp_debug(chibi_ctx, "", result);
+    if (chibi._sexp_exceptionp(result) != 0) {
+        chibi._sexp_print_exception(chibi_ctx, result, chibi._sexp_current_error_port(chibi_ctx));
+        chibi._sexp_write_char(chibi_ctx, '\n', chibi._sexp_current_error_port(chibi_ctx));
+        chibi._sexp_flush(chibi_ctx, chibi._sexp_current_error_port(chibi_ctx));
+    } else {
+        chibi._sexp_write(chibi_ctx, result, chibi._sexp_current_output_port(chibi_ctx));
+        chibi._sexp_write_char(chibi_ctx, '\n', chibi._sexp_current_output_port(chibi_ctx));
+        chibi._sexp_flush(chibi_ctx, chibi._sexp_current_output_port(chibi_ctx));
+    }
 }
 
 // TODO: should probably handle stdin chunks the way that `main` does currently
@@ -146,7 +157,16 @@ export fn eval_stdin() u16 {
     var line_buff: [1024]u8 = undefined;
     const bytes_read = std.io.getStdIn().read(&line_buff) catch |e| return @errorToInt(e);
     const result = chibi.sexp_eval_string(chibi_ctx, &line_buff, @intCast(c_int, bytes_read), null);
-    chibi._sexp_debug(chibi_ctx, "", result);
+    // see chibi-scheme's main.c#repl
+    if (chibi._sexp_exceptionp(result) != 0) {
+        chibi._sexp_print_exception(chibi_ctx, result, chibi._sexp_current_error_port(chibi_ctx));
+        chibi._sexp_write_char(chibi_ctx, '\n', chibi._sexp_current_error_port(chibi_ctx));
+        chibi._sexp_flush(chibi_ctx, chibi._sexp_current_error_port(chibi_ctx));
+    } else {
+        chibi._sexp_write(chibi_ctx, result, chibi._sexp_current_output_port(chibi_ctx));
+        chibi._sexp_write_char(chibi_ctx, '\n', chibi._sexp_current_output_port(chibi_ctx));
+        chibi._sexp_flush(chibi_ctx, chibi._sexp_current_output_port(chibi_ctx));
+    }
     return 0;
 }
 
