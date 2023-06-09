@@ -66,11 +66,11 @@ pub fn build(b: *std.build.Builder) void {
     query_binding.step.dependOn(&patch_chibi_bindings_src.step);
 
     var webTarget = target;
-    webTarget.cpu_arch = .wasm32;
-    webTarget.os_tag = .wasi;
+    //webTarget.cpu_arch = .wasm32;
+    //webTarget.os_tag = .wasi;
 
     const webdriver = b.addExecutable("webdriver", "src/driver.zig");
-    webdriver.setBuildMode(.ReleaseSmall);
+    //webdriver.setBuildMode(.ReleaseSmall);
     webdriver.step.dependOn(&patch_chibi_bindings_src.step);
     webdriver.linkLibC();
     webdriver.setTarget(webTarget);
@@ -91,6 +91,10 @@ pub fn build(b: *std.build.Builder) void {
     webdriver.addPackage(tree_sitter_pkg);
     webdriver.addIncludePath("../thirdparty/tree-sitter/lib/include");
     webdriver.addLibraryPath("../thirdparty/tree-sitter");
+    // fix make the package self contained
+    if ((webTarget.os_tag orelse .linux) != .wasi) {
+        webdriver.linkSystemLibrary("tree-sitter");
+    }
 
     // whhheeeeeee add all the supported languages!
     // TODO: figure out how to wasi-load emscripten side-modules so I can use existing compiled
