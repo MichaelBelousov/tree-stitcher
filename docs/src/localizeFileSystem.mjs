@@ -29,7 +29,7 @@ async function writeFileSystem(targetDir) {
       __dirname,
       "../..",
       src.startsWith("http")
-      ? path.join("tree-stitcher/thirdparty/chibi-scheme", src.split("/wasm-lib/")[1])
+      ? path.join("thirdparty/chibi-scheme", src.split("/wasm-lib/")[1])
       : src
     );
     const destination = path.join(destinationDir, filename);

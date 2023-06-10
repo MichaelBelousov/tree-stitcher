@@ -1,6 +1,6 @@
 {
   "https://raw.githubusercontent.com/MichaelBelousov/chibi-scheme/wasm-lib/lib/init-7.scm": "/chibi",
-  "/tree-stitcher/thirdparty/chibi-scheme/lib/meta-7.scm": "/chibi",
+  "https://raw.githubusercontent.com/MichaelBelousov/chibi-scheme/wasm-lib/lib/meta-7.scm": "/chibi",
   "https://raw.githubusercontent.com/MichaelBelousov/chibi-scheme/wasm-lib/lib/srfi/9.sld": "/chibi/srfi",
   "https://raw.githubusercontent.com/MichaelBelousov/chibi-scheme/wasm-lib/lib/srfi/9.scm": "/chibi/srfi",
   "https://raw.githubusercontent.com/MichaelBelousov/chibi-scheme/wasm-lib/lib/srfi/11.sld": "/chibi/srfi",

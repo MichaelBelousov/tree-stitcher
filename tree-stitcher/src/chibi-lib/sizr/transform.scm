@@ -9,16 +9,10 @@
 (define (string->expr s)
   (read (open-input-string s)))
 
-(define-syntax exec_query2
-  (syntax-rules ()
-    ; is this hygienic?
-    ((exec_query2 exp path)
-       (map (lambda (c) (string->expr (ts_node_string (node (captures c)))))
-            (matches_ExecQueryResult (exec_query (expr->string (quote exp)) '(path)))))))
-
 ; TODO: add # to use outer symbols in a tree-sitter query
 ; (((function_definition declarator: (_ (identifier) @name)) @func)
 ;   (#starts-with-in_? @name))
+
 (define-syntax transform
   (syntax-rules ()
     ; is this hygienic?

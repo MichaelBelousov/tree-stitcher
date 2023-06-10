@@ -41,10 +41,10 @@ const defaultProgram = `\
   ((function_definition body: (_) @body))
 
   ; the transform of that query
-  (@body )
+  (@body)
 
   ; the workspace in which to run the query
-  (playground-workspace))
+  playground-workspace)
 `
 
 const defaultTarget = `\
@@ -196,5 +196,5 @@ async function main() {
   langSelect.dispatchEvent(loadInitLangEvent)
 }
 
-main().catch((err) => { doAlert(err, wasi.getStderrString()); throw err })
+main().catch((err) => { doAlert(err, wasi && wasi.getStderrString()); throw err })
 
