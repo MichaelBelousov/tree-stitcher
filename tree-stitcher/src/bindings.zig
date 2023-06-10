@@ -71,7 +71,6 @@ fn analyzeQuery(
     query: chibi.sexp,
     query_ctx: *ExecQueryResult
 ) void  {
-    //var result = std.heap.c_allocator.create(ExecQueryResult) catch unreachable;
     query_ctx.capture_name_to_index = std.StringHashMap(u32).init(std.heap.c_allocator);
 
     const Impl = struct {
@@ -84,7 +83,10 @@ fn analyzeQuery(
                 const symbol_str = chibi._sexp_string_data(chibi._sexp_symbol_to_string(self.ctx, expr));
                 const symbol_slice = symbol_str[0..std.mem.len(symbol_str)];
                 if (std.mem.startsWith(u8, symbol_slice, "@")) {
-                    self.query_ctx.capture_name_to_index.put(symbol_slice, self.i) catch unreachable;
+                    self.query_ctx.capture_name_to_index.put(symbol_slice, self.i) catch |e| {
+                        std.debug.print("put capture in name/index map err: {}", .{e});
+                        return;
+                    };
                     self.i += 1;
                 }
             }
@@ -100,7 +102,7 @@ fn analyzeQuery(
 // NOTE: this of course doesn't work if someone does something like `(define my@thing 2)`, and we should use
 // real traversal as implemented above, just need to figure out how to best decouple the string based query API
 // and the chibi-scheme specific stuff
-fn captureIndicesFromQueryStr(query: []const u8, map: *std.StringHashMap(u32)) void {
+fn captureIndicesFromQueryStr(query: []const u8, map: *std.StringHashMap(u32)) !void {
     var capture_index: u32 = 0;
     var i: usize = 0;
     var capture_start_index: usize = undefined;
@@ -110,7 +112,7 @@ fn captureIndicesFromQueryStr(query: []const u8, map: *std.StringHashMap(u32)) v
             .InCapture => {
                 if (std.ascii.isWhitespace(c) or c == '(' or c == ')') {
                     const capture_text = query[capture_start_index..i];
-                    map.put(capture_text, capture_index) catch unreachable;
+                    try map.put(capture_text, capture_index);
                     capture_index += 1;
                     state = .Out;
                 }
@@ -135,27 +137,39 @@ pub fn set_language(in_language: *ts.c_api.TSLanguage) void {
     _active_language = in_language;
 }
 
-/// Caller must use libc free to free each object pointed to by the returned list,
-/// as well as the returned list itself
+/// Caller must call free_ExecQueryResult on the result if it is non null
 export fn exec_query(
     in_query: [*:0]const u8,
-    srcs: [*c][*:0]const u8
+    in_srcs: [*c]const [*:0]const u8
 ) ?*ExecQueryResult {
+    const query = in_query[0..std.mem.len(in_query)];
+    const target = in_srcs[0][0..std.mem.len(in_srcs[0])];
+    if (exec_query_impl(query, target)) |result| {
+        return result;
+    } else |err| {
+        std.debug.print("err: {}", .{err});
+        return null;
+    }
+}
+
+/// Caller must call free_ExecQueryResult on the result
+fn exec_query_impl(
+    in_query: []const u8,
+    target: []const u8
+) !*ExecQueryResult {
     const query_len = std.mem.len(in_query);
     const query = in_query[0..query_len];
 
     // FIXME: replace these catches
-    var result = std.heap.c_allocator.create(ExecQueryResult) catch unreachable;
+    var result = try std.heap.c_allocator.create(ExecQueryResult);
 
     result.capture_name_to_index = std.StringHashMap(u32).init(std.heap.c_allocator);
-    captureIndicesFromQueryStr(query, &result.capture_name_to_index);
-
-    const path_len = std.mem.len(srcs[0]);
+    try captureIndicesFromQueryStr(query, &result.capture_name_to_index);
 
     // note the result.buff takes over ownership and will free this
-    var file = FileBuffer.fromDirAndPath(std.heap.c_allocator, std.fs.cwd(), srcs[0][0..path_len]) catch |err| {
-      std.debug.print("error '{any}' opening file: '{s}'\n", .{err, srcs[0]});
-      return null;
+    var file = FileBuffer.fromDirAndPath(std.heap.c_allocator, std.fs.cwd(), target) catch |err| {
+      std.debug.print("error '{}' opening file: '{s}'\n", .{err, target});
+      return err;
     };
 
     result.buff = file.buffer;
@@ -165,11 +179,7 @@ export fn exec_query(
 
     const language =
         if (_active_language) |lang| ts.Language{._c = lang}
-        else {
-            // FIXME: error handling
-            std.debug.print("_active_language was null", .{});
-            @panic("_active_language was null");
-        };
+        else return error.NoActiveLanguage;
 
     if (!parser.set_language(language))
         @panic("couldn't set lang");
@@ -179,18 +189,18 @@ export fn exec_query(
     const syntax_tree_str = root.string();
     defer syntax_tree_str.free();
 
-    result.query_match_iter = root.exec_query(query) catch unreachable;
+    result.query_match_iter = try root.exec_query(query);
 
     var list = std.SegmentedList(*ts._c.TSQueryMatch, 16){};
     defer list.deinit(std.heap.c_allocator);
 
     while (result.query_match_iter.next()) |match| {
-        const match_slot = std.heap.c_allocator.create(ts._c.TSQueryMatch) catch unreachable;
+        const match_slot = try std.heap.c_allocator.create(ts._c.TSQueryMatch);
         match_slot.* = match._c;
 
         // LEAK? working around that tree-sitter seems to reuse the capture pointer of returned matches when you
         // call next again... but will tree-sitter free it correctly later?
-        const newCaptures = std.heap.c_allocator.alloc(ts._c.TSQueryCapture, match._c.capture_count) catch unreachable;
+        const newCaptures = try std.heap.c_allocator.alloc(ts._c.TSQueryCapture, match._c.capture_count);
         std.mem.copy(
             ts._c.TSQueryCapture,
             newCaptures[0..match._c.capture_count],
@@ -198,13 +208,10 @@ export fn exec_query(
         );
         match_slot.captures = @as([*c]ts._c.TSQueryCapture, &newCaptures[0]);
 
-        list.append(std.heap.c_allocator, match_slot) catch unreachable;
+        try list.append(std.heap.c_allocator, match_slot);
     }
 
-    result.matches = std.heap.c_allocator.allocSentinel(?*ts._c.TSQueryMatch, list.len, null) catch |err| {
-        std.debug.print("allocSentinel err {any}", .{err});
-        return null;
-    };
+    result.matches = try std.heap.c_allocator.allocSentinel(?*ts._c.TSQueryMatch, list.len, null);
     var list_iter = list.iterator(0);
 
     var i: usize = 0;

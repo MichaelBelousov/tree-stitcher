@@ -11,7 +11,7 @@
 
 (define-syntax exec_query2
   (syntax-rules ()
-    ; is this hygeinic?
+    ; is this hygienic?
     ((exec_query2 exp path)
        (map (lambda (c) (string->expr (ts_node_string (node (captures c)))))
             (matches_ExecQueryResult (exec_query (expr->string (quote exp)) '(path)))))))
