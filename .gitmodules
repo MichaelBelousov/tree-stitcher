@@ -11,7 +11,7 @@
 	path = thirdparty/zig-clap
 	url = https://github.com/Hejsil/zig-clap
 [submodule "tree-stitcher/thirdparty/chibi-scheme"]
-	path = tree-stitcher/thirdparty/chibi-scheme
+	path = thirdparty/chibi-scheme
 	url = git@github.com:MichaelBelousov/chibi-scheme.git
 [submodule "thirdparty/tree-sitter-javascript"]
 	path = thirdparty/tree-sitter-javascript

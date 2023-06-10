@@ -1,7 +1,7 @@
 // thank you https://zig.news/xq/zig-build-explained-part-1-59lf
 const std = @import("std");
 // FIXME: move  chibi-scheme to root thirdparty dir
-const chibi_scheme_build = @import("tree-stitcher/thirdparty/chibi-scheme/build.zig");
+const chibi_scheme_build = @import("thirdparty/chibi-scheme/build.zig");
 const tree_sitter_build = @import("tree-sitter/build.zig");
 
 const zig_clap_package = std.build.Pkg{
@@ -69,10 +69,10 @@ pub fn build(b: *std.build.Builder) !void {
     webdriver.step.dependOn(&patch_chibi_bindings_src.step);
     webdriver.linkLibC();
     webdriver.setTarget(webTarget);
-    webdriver.addIncludePath("tree-stitcher/thirdparty/chibi-scheme/include");
+    webdriver.addIncludePath("thirdparty/chibi-scheme/include");
     webdriver.addCSourceFile("tree-stitcher/src/chibi_macros.c", &([_][]const u8{"-std=c11"} ++ chibi_scheme_build.c_flags));
     // NOTE: currently this requires manually running make && zig build in thirdparty/chibi-scheme
-    webdriver.addLibraryPath("tree-stitcher/thirdparty/chibi-scheme/zig-out/lib");
+    webdriver.addLibraryPath("thirdparty/chibi-scheme/zig-out/lib");
     webdriver.linkSystemLibraryNeeded("chibi-scheme");
     webdriver.export_symbol_names = &.{
         "sexp_eval_string",
