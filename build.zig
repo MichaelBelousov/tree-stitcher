@@ -84,6 +84,7 @@ pub fn build(b: *std.build.Builder) !void {
 
     const tree_sitter_lib = try tree_sitter_build.libPkgStep(b, "tree-sitter");
     tree_sitter_lib.setTarget(webdriver.target);
+    tree_sitter_lib.setBuildMode(webdriver.build_mode);
     webdriver.step.dependOn(&tree_sitter_lib.step);
     webdriver.linkLibrary(tree_sitter_lib);
     webdriver.addPackage(tree_sitter_pkg);
@@ -97,6 +98,7 @@ pub fn build(b: *std.build.Builder) !void {
 
     const ts_langs = b.addStaticLibrary("treesitter-langs", "tree-stitcher/src/empty.zig");
     ts_langs.setTarget(webdriver.target);
+    ts_langs.setBuildMode(webdriver.build_mode);
     ts_langs.linkSystemLibrary("c++");
     ts_langs.addSystemIncludePath("./thirdparty/tree-sitter/lib/include");
     // cpp
@@ -108,7 +110,6 @@ pub fn build(b: *std.build.Builder) !void {
     // javascript
     ts_langs.addCSourceFile("thirdparty/tree-sitter-javascript/src/parser.c", &.{"-std=c99"});
     ts_langs.addCSourceFile("thirdparty/tree-sitter-javascript/src/scanner.c", &.{"-std=c99"});
-
 
     webdriver.step.dependOn(&ts_langs.step);
     webdriver.linkLibrary(ts_langs);
