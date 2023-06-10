@@ -62,20 +62,16 @@ pub fn build(b: *std.build.Builder) !void {
 
     var webTarget = target;
     // FIXME: use setPreferredTarget instead
-    webTarget.cpu_arch = .wasm32;
-    webTarget.os_tag = .wasi;
-
+    //webTarget.cpu_arch = .wasm32;
+    //webTarget.os_tag = .wasi;
 
     const webdriver = b.addExecutable("webdriver", "tree-stitcher/src/driver.zig");
-    webdriver.setBuildMode(.ReleaseSmall);
+    webdriver.setBuildMode(mode);
+    webdriver.setTarget(webTarget);
     webdriver.step.dependOn(&patch_chibi_bindings_src.step);
     webdriver.linkLibC();
-    webdriver.setTarget(webTarget);
     webdriver.addIncludePath("thirdparty/chibi-scheme/include");
     webdriver.addCSourceFile("tree-stitcher/src/chibi_macros.c", &([_][]const u8{"-std=c11"} ++ chibi_scheme_build.c_flags));
-    // NOTE: currently this requires manually running make && zig build in thirdparty/chibi-scheme
-    webdriver.addLibraryPath("thirdparty/chibi-scheme/zig-out/lib");
-    webdriver.linkSystemLibraryNeeded("chibi-scheme");
     webdriver.export_symbol_names = &.{
         "sexp_eval_string",
         "init", "deinit", "eval_str", "eval_stdin",
@@ -91,6 +87,7 @@ pub fn build(b: *std.build.Builder) !void {
     webdriver.linkLibrary(tree_sitter_lib);
     webdriver.addPackage(tree_sitter_pkg);
 
+    // NOTE: currently this requires manually running make && zig build in thirdparty/chibi-scheme
     const chibi_scheme_lib = try chibi_scheme_build.libPkgStep(b, "./thirdparty/chibi-scheme");
     chibi_scheme_lib.setTarget(webdriver.target);
     chibi_scheme_lib.setBuildMode(webdriver.build_mode);
