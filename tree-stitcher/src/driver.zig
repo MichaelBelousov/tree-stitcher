@@ -74,7 +74,6 @@ fn loadSizrBindings(in_chibi_ctx: chibi.sexp) !void {
         _ = chibi._sexp_define_foreign(in_chibi_ctx, env, "matches_ExecQueryResult", 1, sexp_matches_ExecQueryResult_stub);
         _ = chibi._sexp_define_foreign(in_chibi_ctx, env, "node_source", 2, sexp_node_source_stub);
         _ = chibi._sexp_define_foreign(in_chibi_ctx, env, "ts_node_string", 1, sexp_ts_node_string_stub);
-        std.debug.print("loaded foreigns", .{});
     }
 }
 
@@ -106,7 +105,7 @@ export fn init() u16 {
     //     return @errorToInt(e);
     // };
 
-    const target_file = std.fs.cwd().openFile("/target.txt", .{}) catch |e| {
+    const target_file = std.fs.cwd().openFile("target.txt", .{}) catch |e| {
         std.debug.print("open /target.txt err: {}\n", .{e});
         return @errorToInt(e);
     };
@@ -121,10 +120,16 @@ export fn init() u16 {
         return @errorToInt(e);
     };
 
-    _ = target_file.readAll(target_buf) catch |e| {
-        std.debug.print("err: {}\n", .{e});
-        return @errorToInt(e);
-    };
+    // BUG: readAll seems to block
+    // _ = target_file.readAll(target_buf) catch |e| {
+    var total_bytes_read: usize = 0;
+    while (target_file.read(target_buf[total_bytes_read..])) |bytes_read| {
+        if (bytes_read == 0) break;
+        total_bytes_read += bytes_read;
+    } else |err| {
+        std.debug.print("err: {}\n", .{err});
+        return @errorToInt(err);
+    }
 
     chibi.sexp_scheme_init();
 
