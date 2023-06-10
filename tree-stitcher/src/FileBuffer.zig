@@ -7,9 +7,19 @@ buffer: []const u8,
 
 const Self = @This();
 
-pub fn from_path(alloc: std.mem.Allocator, path: []const u8) !Self {
+pub fn fromDirAndPath(alloc: std.mem.Allocator, dir: std.fs.Dir, path: []const u8) !Self {
+    const file = try dir.openFile(path, .{});
+    defer file.close();
+    return fromFile(alloc, file);
+}
+
+pub fn fromAbsPath(alloc: std.mem.Allocator, path: []const u8) !Self {
     const file = try std.fs.openFileAbsolute(path, .{});
     defer file.close();
+    return fromFile(alloc, file);
+}
+
+pub fn fromFile(alloc: std.mem.Allocator, file: std.fs.File) !Self {
     const file_len = (try file.stat()).size;
 
     switch (builtin.os.tag) {

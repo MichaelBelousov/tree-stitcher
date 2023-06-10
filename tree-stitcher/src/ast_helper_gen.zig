@@ -74,7 +74,7 @@ pub fn convertGrammars(allocator: std.mem.Allocator, grammar_paths: []const []co
     for (grammar_paths) |rel_path| {
         // TODO: don't use realpath, just some path join operation
         const abs_path = try std.fs.cwd().realpathAlloc(allocator, rel_path);
-        const grammar_file = try FileBuffer.from_path(allocator, abs_path);
+        const grammar_file = try FileBuffer.fromPath(allocator, abs_path);
         // TODO: use typed json parsing with Grammar type
         const grammar = try parser.parse(grammar_file.buffer);
         //std.debug.print("grammar: {any}\n", .{grammar.root.get("name")});

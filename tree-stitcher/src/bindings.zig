@@ -151,17 +151,9 @@ export fn exec_query(
     captureIndicesFromQueryStr(query, &result.capture_name_to_index);
 
     const path_len = std.mem.len(srcs[0]);
-    // FIXME: don't use realpath, just some path join operation
-    const abs_path = std.fs.cwd().realpathAlloc(std.heap.c_allocator, srcs[0][0..path_len]) catch |err| {
-      std.debug.print("error '{}' realpath-ing file: '{s}'\n", .{err, srcs[0]});
-      const cwd = std.fs.cwd().realpathAlloc(std.heap.c_allocator, ".") catch return null;
-      defer std.heap.c_allocator.free(cwd);
-      std.debug.print("was in cwd: '{s}'\n", .{cwd});
-      return null;
-    };
-    defer std.heap.c_allocator.free(abs_path);
 
-    var file = FileBuffer.from_path(std.heap.c_allocator, abs_path) catch |err| {
+    // note the result.buff takes over ownership and will free this
+    var file = FileBuffer.fromDirAndPath(std.heap.c_allocator, std.fs.cwd(), srcs[0][0..path_len]) catch |err| {
       std.debug.print("error '{any}' opening file: '{s}'\n", .{err, srcs[0]});
       return null;
     };
@@ -170,7 +162,6 @@ export fn exec_query(
 
     const parser = ts.Parser.new();
     defer parser.free();
-
 
     const language =
         if (_active_language) |lang| ts.Language{._c = lang}
