@@ -9,7 +9,7 @@ const __dirname = path.dirname(import.meta.url.slice("file://".length));
  * @param {string} targetDir
  */
 async function writeFileSystem(targetDir) {
-  const jsonPath = path.join(__dirname, "./filesystem.json5");
+  const jsonPath = path.join(__dirname, "./filesystem.json");
   const filesystem = JSON5.parse(await fs.promises.readFile(jsonPath, "utf8"));
 
   try {

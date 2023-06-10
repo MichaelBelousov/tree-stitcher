@@ -7,13 +7,13 @@
  */
 function assert(cond, msg) {
   if (!cond) {
-    alert(Error(msg || 'assertion failed'))
+    doAlert(Error(msg || 'assertion failed'))
   }
 }
 
 /** @param {any[]} objs */
-function alert(...objs) {
-  window.alert(objs
+function doAlert(...objs) {
+  alert(objs
     .map(obj =>
       obj instanceof Error
       ? `${obj.constructor.name}: ${obj.message}\n${obj.stack}`
@@ -26,11 +26,13 @@ function alert(...objs) {
 
 /** @param {number} nativeCallResult */
 function handleNativeError(nativeCallResult) {
-  if (nativeCallResult !== 0)
-    alert(
-      Error(`got failure code ${nativeCallResult} in native call`),
-      wasi.getStderrString()
-    )
+  const stderr = wasi.getStderrString()
+  if (nativeCallResult === 0)
+    return
+  const err = Error(`got failure code ${nativeCallResult} in native call`)
+  doAlert(err, stderr)
+  debugger
+  throw err;
 }
 
 const defaultProgram = `\
@@ -114,22 +116,15 @@ let wasi
  * @param {import('@wasmer/wasi').MemFS} fs
  */
 async function loadFileSystem(fs) {
-  const files = [
-    ['https://raw.githubusercontent.com/MichaelBelousov/chibi-scheme/master/lib/init-7.scm', '/chibi'],
-    ['https://raw.githubusercontent.com/MichaelBelousov/chibi-scheme/master/lib/meta-7.scm', '/chibi'],
-    ['/tree-stitcher/src/langs/support.scm', '/src/langs'],
-    ['/tree-stitcher/src/langs/cpp.scm', '/src/langs'],
-    ['/tree-stitcher/src/chibi-lib/sizr/transform.scm', '/chibi/sizr/transform.scm'],
-    ['/tree-stitcher/src/chibi-lib/sizr/transform.sld', '/chibi/sizr/transform.sld'],
-  ]
+  const files = await fetch("./filesystem.json").then(r => r.json());
 
   /**
    * Like `mkdir -p`
    * @param {string} dir
    */
   function mkdirp(dir) {
-    assert(dir.startsWith("/"), "dir must be absolute");
-    const segments = dir.split('/');
+    assert(dir.startsWith("/"), "dir must be absolute")
+    const segments = dir.split('/')
     for (let i = 2; i < segments.length + 1; ++i) {
       // TODO: cache and avoid extra createDir?
       fs.createDir("/" + segments.slice(1, i).join('/'))
@@ -137,13 +132,13 @@ async function loadFileSystem(fs) {
   }
 
   await Promise.all(
-    files
+    Object.entries(files)
       .map(([f, dir]) => fetch(f)
         .then(resp => resp.arrayBuffer())
         .then(buff => {
           const basename = f.split('/').pop()
           const destination = `${dir}/${basename}`
-          mkdirp(dir);
+          mkdirp(dir)
           const file = fs.open(destination, { write: true, create: true })
           file.write(new Uint8Array(buff))
         })
@@ -171,11 +166,14 @@ async function main() {
 
   const inst = wasi.instantiate(module, {})
 
-  let targetFile = wasi.fs.open("/target.txt", {read: true, write: true, create: true})
-  targetFile.writeString(targetEditor.value)
   await loadFileSystem(wasi.fs)
+  let targetFile = wasi.fs.open('/target.txt', {read: true, write: true, create: true})
+  targetFile.writeString(targetEditor.value)
 
   handleNativeError(inst.exports.init())
+
+  wasi.setStdinString('(load "/playground/playground-prelude.scm")')
+  handleNativeError(inst.exports.eval_stdin())
 
   runButton.addEventListener('click', () => {
     const program = programEditor.value
@@ -186,22 +184,17 @@ async function main() {
 
   langSelect.addEventListener('change', async (e) => {
     const langTag = e.currentTarget.value
-    if (!langTag) return;
+    if (!langTag) return
     sessionStorage.setItem('target-type', langTag)
     inst.exports[`load_${langTag}`]()
     // TODO: runtime code loading
-    /*
-    if (langParser === undefined) {
-      const langUrl = `https://tree-sitter.github.io/tree-sitter-${langTag}.wasm`;
-      await LanguageLoader.load(wasi, inst, langUrl)
-    }
-    */
+    // this could help: https://radu-matei.com/blog/adding-wasi-syscall/
   })
 
   // force rerun listener to load
-  const loadInitLangEvent = new Event('change');
-  langSelect.dispatchEvent(loadInitLangEvent);
+  const loadInitLangEvent = new Event('change')
+  langSelect.dispatchEvent(loadInitLangEvent)
 }
 
-main().catch((err) => { alert(err, wasi.getStderrString()); throw err })
+main().catch((err) => { doAlert(err, wasi.getStderrString()); throw err })
 
