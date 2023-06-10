@@ -58,21 +58,19 @@ export fn load_cpp() void { return bindings.set_language(tree_sitter_cpp()); }
 export fn load_python() void { return bindings.set_language(tree_sitter_python()); }
 export fn load_javascript() void { return bindings.set_language(tree_sitter_javascript()); }
 
-extern fn sexp_exec_query_stub(chibi.sexp, chibi.sexp, c_int) chibi.sexp;
-extern fn sexp_transform_ExecQueryResult_stub(chibi.sexp, chibi.sexp, c_int) chibi.sexp;
-extern fn sexp_matches_ExecQueryResult_stub(chibi.sexp, chibi.sexp, c_int) chibi.sexp;
-extern fn sexp_node_source_stub(chibi.sexp, chibi.sexp, c_int) chibi.sexp;
-extern fn sexp_ts_node_string_stub(chibi.sexp, chibi.sexp, c_int) chibi.sexp;
+extern fn sexp_exec_query_stub(chibi.sexp, chibi.sexp, isize) chibi.sexp;
+extern fn sexp_transform_ExecQueryResult_stub(chibi.sexp, chibi.sexp, isize) chibi.sexp;
+extern fn sexp_matches_ExecQueryResult_stub(chibi.sexp, chibi.sexp, isize) chibi.sexp;
+extern fn sexp_node_source_stub(chibi.sexp, chibi.sexp, isize) chibi.sexp;
+extern fn sexp_ts_node_string_stub(chibi.sexp, chibi.sexp, isize) chibi.sexp;
 
 fn loadSizrBindings(in_chibi_ctx: chibi.sexp) !void {
-    if (builtin.os.tag == .wasi) {
-        const env = chibi._sexp_context_env(in_chibi_ctx);
-        _ = chibi._sexp_define_foreign(in_chibi_ctx, env, "exec_query", 2, sexp_exec_query_stub);
-        _ = chibi._sexp_define_foreign(in_chibi_ctx, env, "transform_ExecQueryResult", 2, sexp_transform_ExecQueryResult_stub);
-        _ = chibi._sexp_define_foreign(in_chibi_ctx, env, "matches_ExecQueryResult", 1, sexp_matches_ExecQueryResult_stub);
-        _ = chibi._sexp_define_foreign(in_chibi_ctx, env, "node_source", 2, sexp_node_source_stub);
-        _ = chibi._sexp_define_foreign(in_chibi_ctx, env, "ts_node_string", 1, sexp_ts_node_string_stub);
-    }
+    const env = chibi._sexp_context_env(in_chibi_ctx);
+    _ = chibi._sexp_define_foreign(in_chibi_ctx, env, "exec_query", 2, sexp_exec_query_stub);
+    _ = chibi._sexp_define_foreign(in_chibi_ctx, env, "transform_ExecQueryResult", 2, sexp_transform_ExecQueryResult_stub);
+    _ = chibi._sexp_define_foreign(in_chibi_ctx, env, "matches_ExecQueryResult", 1, sexp_matches_ExecQueryResult_stub);
+    _ = chibi._sexp_define_foreign(in_chibi_ctx, env, "node_source", 2, sexp_node_source_stub);
+    _ = chibi._sexp_define_foreign(in_chibi_ctx, env, "ts_node_string", 1, sexp_ts_node_string_stub);
 }
 
 export fn init() u16 {
@@ -121,7 +119,9 @@ export fn init() u16 {
         return @errorToInt(error.ChibiLoadErr);
     }
 
-    _ = loadSizrBindings(chibi_ctx) catch |e| {
+    load_cpp();
+
+    loadSizrBindings(chibi_ctx) catch |e| {
         return @errorToInt(e);
     };
 

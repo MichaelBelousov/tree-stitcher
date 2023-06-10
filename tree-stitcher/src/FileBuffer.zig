@@ -23,9 +23,19 @@ pub fn fromFile(alloc: std.mem.Allocator, file: std.fs.File) !Self {
     const file_len = (try file.stat()).size;
 
     switch (builtin.os.tag) {
-        .windows, .wasi => {
+        .windows => {
             const buffer = try alloc.alloc(u8, @intCast(usize, file_len));
             _ = try file.readAll(buffer);
+            return Self{ .buffer = buffer };
+        },
+        // BUG: readAll for some reason blocks in wasmtime on non-empty files
+        .wasi => {
+            const buffer = try alloc.alloc(u8, @intCast(usize, file_len));
+            var total_bytes_read: usize = 0;
+            while (file.read(buffer[total_bytes_read..])) |bytes_read| {
+                if (bytes_read == 0) break;
+                total_bytes_read += bytes_read;
+            } else |err| return err;
             return Self{ .buffer = buffer };
         },
         // assuming posix currently
