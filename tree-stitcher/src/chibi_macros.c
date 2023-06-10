@@ -28,6 +28,7 @@ void _sexp_flush(sexp ctx, sexp port) { sexp_flush(ctx, port); }
 sexp _sexp_current_error_port(sexp ctx) { return sexp_current_error_port(ctx); }
 sexp _sexp_current_output_port(sexp ctx) { return sexp_current_output_port(ctx); }
 sexp _sexp_equalp(sexp ctx, sexp a, sexp b) { return sexp_equalp(ctx, a, b); }
+sexp _sexp_define_foreign(sexp ctx, sexp env, const char* name, int num_args, sexp_proc1 func) { return sexp_define_foreign(ctx, env, name, num_args, func); }
 
 // non-macro translation helpers
 void _set_sexp_car(sexp ls, sexp in_car) { sexp_car(ls) = in_car; }

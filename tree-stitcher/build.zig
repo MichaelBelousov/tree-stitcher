@@ -66,11 +66,11 @@ pub fn build(b: *std.build.Builder) void {
     query_binding.step.dependOn(&patch_chibi_bindings_src.step);
 
     var webTarget = target;
-    //webTarget.cpu_arch = .wasm32;
-    //webTarget.os_tag = .wasi;
+    webTarget.cpu_arch = .wasm32;
+    webTarget.os_tag = .wasi;
 
     const webdriver = b.addExecutable("webdriver", "src/driver.zig");
-    //webdriver.setBuildMode(.ReleaseSmall);
+    webdriver.setBuildMode(.ReleaseSmall);
     webdriver.step.dependOn(&patch_chibi_bindings_src.step);
     webdriver.linkLibC();
     webdriver.setTarget(webTarget);
@@ -89,12 +89,10 @@ pub fn build(b: *std.build.Builder) void {
 
     // TODO: make bindings self-contained
     webdriver.addPackage(tree_sitter_pkg);
-    webdriver.addIncludePath("../thirdparty/tree-sitter/lib/include");
-    webdriver.addLibraryPath("../thirdparty/tree-sitter");
-    // fix make the package self contained
-    if ((webTarget.os_tag orelse .linux) != .wasi) {
-        webdriver.linkSystemLibrary("tree-sitter");
-    }
+    // FIXME: eww how do I do this using just the package??
+    webdriver.addLibraryPath("../tree-sitter/zig-out/lib");
+    webdriver.addSystemIncludePath("../thirdparty/tree-sitter/lib/include");
+    webdriver.linkSystemLibrary("tree-sitter");
 
     // whhheeeeeee add all the supported languages!
     // TODO: figure out how to wasi-load emscripten side-modules so I can use existing compiled
@@ -106,10 +104,10 @@ pub fn build(b: *std.build.Builder) void {
 
     // cpp
     webdriver.addCSourceFile("../thirdparty/tree-sitter-cpp/src/parser.c", &.{"-std=c99"});
-    webdriver.addCSourceFile("../thirdparty/tree-sitter-cpp/src/scanner.cc", &.{"-std=c++14"});
+    webdriver.addCSourceFile("../thirdparty/tree-sitter-cpp/src/scanner.cc", &.{"-std=c++14", "-fno-exceptions"});
     // python
     webdriver.addCSourceFile("../thirdparty/tree-sitter-python/src/parser.c", &.{"-std=c99"});
-    webdriver.addCSourceFile("../thirdparty/tree-sitter-python/src/scanner.cc", &.{"-std=c++14"});
+    webdriver.addCSourceFile("../thirdparty/tree-sitter-python/src/scanner.cc", &.{"-std=c++14", "-fno-exceptions"});
     // javascript
     webdriver.addCSourceFile("../thirdparty/tree-sitter-javascript/src/parser.c", &.{"-std=c99"});
     webdriver.addCSourceFile("../thirdparty/tree-sitter-javascript/src/scanner.c", &.{"-std=c99"});

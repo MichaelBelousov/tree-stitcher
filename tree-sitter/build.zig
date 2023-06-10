@@ -31,13 +31,10 @@ pub fn build(b: *std.build.Builder) void {
     for ([_]*std.build.LibExeObjStep{lib, tests}) |artifact| {
         artifact.setBuildMode(mode);
         artifact.linkLibC();
-        artifact.linkSystemLibrary("c++");
         artifact.addIncludePath("../thirdparty/tree-sitter/lib/include");
-        // NOTE: why use linkSystemLibrary? Can't link it directly?
-        artifact.addLibraryPath("../thirdparty/tree-sitter");
-        artifact.linkSystemLibrary("tree-sitter");
-        artifact.addCSourceFile("../thirdparty/tree-sitter-cpp/src/parser.c", &.{"-std=c99"});
-        artifact.addCSourceFile("../thirdparty/tree-sitter-cpp/src/scanner.cc", &.{"-std=c++14"});
+        const c_flags = .{"-std=c99", "-DNDEBUG=", "-Dfprintf(...)=", "-fno-exceptions"};
+        artifact.addCSourceFile("../thirdparty/tree-sitter/lib/src/lib.c", &c_flags);
+        artifact.addIncludePath("../thirdparty/tree-sitter/lib/src");
     }
 
     lib.install();

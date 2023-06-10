@@ -1,5 +1,3 @@
-;#!r7rs
-(import (scheme small))
 
 (define (expr->string e)
   (call-with-port

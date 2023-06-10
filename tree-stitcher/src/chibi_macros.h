@@ -27,6 +27,7 @@ void _sexp_flush(sexp ctx, sexp port);
 sexp _sexp_current_error_port(sexp ctx);
 sexp _sexp_current_output_port(sexp ctx);
 sexp _sexp_equalp(sexp ctx, sexp a, sexp b);
+sexp _sexp_define_foreign(sexp ctx, sexp env, const char* name, int num_args, sexp_proc1 func);
 
 // non-macro translation helpers
 void _set_sexp_car(sexp ls, sexp in_car);

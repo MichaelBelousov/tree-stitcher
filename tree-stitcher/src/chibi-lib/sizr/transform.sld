@@ -1,4 +1,8 @@
 (define-library (sizr transform)
-  ;;(import (chibi optional) (chibi pathname) (chibi string))
+  (import
+    (scheme base)
+    ; (scheme file)
+    (scheme read)
+    (scheme write))
   (export transform ast->string)
   (include "transform.scm"))

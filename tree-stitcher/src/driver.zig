@@ -6,7 +6,6 @@
 
 const std = @import("std");
 const builtin = @import("builtin");
-const chibi_transform_funcs = @import("./chibi_transform.zig");
 const bindings = @import("./bindings.zig");
 const ts = @import("tree-sitter");
 
@@ -61,7 +60,27 @@ export fn load_cpp() void { return bindings.set_language(tree_sitter_cpp()); }
 export fn load_python() void { return bindings.set_language(tree_sitter_python()); }
 export fn load_javascript() void { return bindings.set_language(tree_sitter_javascript()); }
 
+extern fn sexp_exec_query_stub(chibi.sexp, chibi.sexp, c_int) chibi.sexp;
+extern fn sexp_transform_ExecQueryResult_stub(chibi.sexp, chibi.sexp, c_int) chibi.sexp;
+extern fn sexp_matches_ExecQueryResult_stub(chibi.sexp, chibi.sexp, c_int) chibi.sexp;
+extern fn sexp_node_source_stub(chibi.sexp, chibi.sexp, c_int) chibi.sexp;
+extern fn sexp_ts_node_string_stub(chibi.sexp, chibi.sexp, c_int) chibi.sexp;
+
+fn loadSizrBindings(in_chibi_ctx: chibi.sexp) !void {
+    if (builtin.os.tag == .wasi) {
+        const env = chibi._sexp_context_env(in_chibi_ctx);
+        _ = chibi._sexp_define_foreign(in_chibi_ctx, env, "exec_query", 2, sexp_exec_query_stub);
+        _ = chibi._sexp_define_foreign(in_chibi_ctx, env, "transform_ExecQueryResult", 2, sexp_transform_ExecQueryResult_stub);
+        _ = chibi._sexp_define_foreign(in_chibi_ctx, env, "matches_ExecQueryResult", 1, sexp_matches_ExecQueryResult_stub);
+        _ = chibi._sexp_define_foreign(in_chibi_ctx, env, "node_source", 2, sexp_node_source_stub);
+        _ = chibi._sexp_define_foreign(in_chibi_ctx, env, "ts_node_string", 1, sexp_ts_node_string_stub);
+        std.debug.print("loaded foreigns", .{});
+    }
+}
+
 export fn init() u16 {
+    const chibi_transform_funcs = @import("./chibi_transform.zig");
+    _ = chibi_transform_funcs;
     // const args = std.process.argsAlloc(allocator) catch |e| {
     //     std.debug.print("proc arg alloc err: {}\n", .{e});
     //     return @errorToInt(e);
@@ -114,18 +133,20 @@ export fn init() u16 {
     if (chibi._sexp_exceptionp(
             chibi.sexp_load_standard_env(chibi_ctx, null, chibi.SEXP_SEVEN)
     ) != 0) {
-        std.debug.print("exp_load_standard_env err", .{});
+        std.debug.print("sexp_load_standard_env err\n", .{});
         return @errorToInt(error.ChibiLoadErr);
     }
 
     if (chibi._sexp_exceptionp(
             chibi.sexp_load_standard_ports(chibi_ctx, null, chibi.stdin, chibi.stdout, chibi.stdout, 1)
     ) != 0) {
-        std.debug.print("exp_load_standard_env err", .{});
+        std.debug.print("sexp_load_standard_ports err\n", .{});
         return @errorToInt(error.ChibiLoadErr);
     }
 
-    //chibi.sexp_global(ctx, chibi.SEXP_G_STRICT_P) = chibi.SEXP_TRUE;
+    _ = loadSizrBindings(chibi_ctx) catch |e| {
+        return @errorToInt(e);
+    };
 
     return 0;
 }
@@ -136,20 +157,25 @@ export fn deinit() void {
     allocator.free(target_buf);
 }
 
+fn print_chibi_value(val: chibi.sexp) void {
+    if (chibi._sexp_exceptionp(val) != 0) {
+        chibi._sexp_print_exception(chibi_ctx, val, chibi._sexp_current_error_port(chibi_ctx));
+        chibi._sexp_write_char(chibi_ctx, '\n', chibi._sexp_current_error_port(chibi_ctx));
+        chibi._sexp_flush(chibi_ctx, chibi._sexp_current_error_port(chibi_ctx));
+    } else {
+        chibi._sexp_write(chibi_ctx, val, chibi._sexp_current_output_port(chibi_ctx));
+        chibi._sexp_write_char(chibi_ctx, '\n', chibi._sexp_current_output_port(chibi_ctx));
+        chibi._sexp_flush(chibi_ctx, chibi._sexp_current_output_port(chibi_ctx));
+    }
+}
+
+
 // TODO: remove...
 // this blog demonstrates how I should implement usage of this function in the browser with wasmer
 // https://mnt.io/2018/08/22/from-rust-to-beyond-the-webassembly-galaxy/
 export fn eval_str(buf_ptr: [*]const u8, _buf_len: i32) void {
     const result = chibi.sexp_eval_string(chibi_ctx, buf_ptr, @intCast(c_int, _buf_len), null);
-    if (chibi._sexp_exceptionp(result) != 0) {
-        chibi._sexp_print_exception(chibi_ctx, result, chibi._sexp_current_error_port(chibi_ctx));
-        chibi._sexp_write_char(chibi_ctx, '\n', chibi._sexp_current_error_port(chibi_ctx));
-        chibi._sexp_flush(chibi_ctx, chibi._sexp_current_error_port(chibi_ctx));
-    } else {
-        chibi._sexp_write(chibi_ctx, result, chibi._sexp_current_output_port(chibi_ctx));
-        chibi._sexp_write_char(chibi_ctx, '\n', chibi._sexp_current_output_port(chibi_ctx));
-        chibi._sexp_flush(chibi_ctx, chibi._sexp_current_output_port(chibi_ctx));
-    }
+    print_chibi_value(result);
 }
 
 // TODO: should probably handle stdin chunks the way that `main` does currently
@@ -158,18 +184,9 @@ export fn eval_stdin() u16 {
     const bytes_read = std.io.getStdIn().read(&line_buff) catch |e| return @errorToInt(e);
     const result = chibi.sexp_eval_string(chibi_ctx, &line_buff, @intCast(c_int, bytes_read), null);
     // see chibi-scheme's main.c#repl
-    if (chibi._sexp_exceptionp(result) != 0) {
-        chibi._sexp_print_exception(chibi_ctx, result, chibi._sexp_current_error_port(chibi_ctx));
-        chibi._sexp_write_char(chibi_ctx, '\n', chibi._sexp_current_error_port(chibi_ctx));
-        chibi._sexp_flush(chibi_ctx, chibi._sexp_current_error_port(chibi_ctx));
-    } else {
-        chibi._sexp_write(chibi_ctx, result, chibi._sexp_current_output_port(chibi_ctx));
-        chibi._sexp_write_char(chibi_ctx, '\n', chibi._sexp_current_output_port(chibi_ctx));
-        chibi._sexp_flush(chibi_ctx, chibi._sexp_current_output_port(chibi_ctx));
-    }
+    print_chibi_value(result);
     return 0;
 }
-
 
 pub fn main() !void {
     const init_result = init();
