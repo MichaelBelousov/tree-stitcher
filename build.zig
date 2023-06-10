@@ -61,8 +61,10 @@ pub fn build(b: *std.build.Builder) !void {
     query_binding.step.dependOn(&patch_chibi_bindings_src.step);
 
     var webTarget = target;
+    // FIXME: use setPreferredTarget instead
     webTarget.cpu_arch = .wasm32;
     webTarget.os_tag = .wasi;
+
 
     const webdriver = b.addExecutable("webdriver", "tree-stitcher/src/driver.zig");
     webdriver.setBuildMode(.ReleaseSmall);
@@ -82,12 +84,18 @@ pub fn build(b: *std.build.Builder) !void {
     };
     webdriver.install();
 
-    const tree_sitter_lib = try tree_sitter_build.libPkgStep(b, "tree-sitter");
+    const tree_sitter_lib = try tree_sitter_build.libPkgStep(b, "./tree-sitter");
     tree_sitter_lib.setTarget(webdriver.target);
     tree_sitter_lib.setBuildMode(webdriver.build_mode);
     webdriver.step.dependOn(&tree_sitter_lib.step);
     webdriver.linkLibrary(tree_sitter_lib);
     webdriver.addPackage(tree_sitter_pkg);
+
+    const chibi_scheme_lib = try chibi_scheme_build.libPkgStep(b, "./thirdparty/chibi-scheme");
+    chibi_scheme_lib.setTarget(webdriver.target);
+    chibi_scheme_lib.setBuildMode(webdriver.build_mode);
+    webdriver.step.dependOn(&chibi_scheme_lib.step);
+    webdriver.linkLibrary(chibi_scheme_lib);
 
     // whhheeeeeee add all the supported languages!
     // TODO: figure out how to wasi-load emscripten side-modules so I can use existing compiled
