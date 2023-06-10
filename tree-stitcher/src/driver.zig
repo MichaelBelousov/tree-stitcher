@@ -29,8 +29,6 @@ var allocator = std.heap.c_allocator;
 
 var preopens: std.fs.wasi.PreopenList = undefined;
 
-var target_buf: []u8 = undefined;
-
 // no dynamic language loading yet :/
 // export fn loadAndSetLanguage(in_path: ?[*:0]const u8, in_sym: ?[*:0]const u8) bool {
 //     const path = in_path orelse {
@@ -105,32 +103,6 @@ export fn init() u16 {
     //     return @errorToInt(e);
     // };
 
-    const target_file = std.fs.cwd().openFile("target.txt", .{}) catch |e| {
-        std.debug.print("open /target.txt err: {}\n", .{e});
-        return @errorToInt(e);
-    };
-    defer target_file.close();
-    const file_len = @intCast(usize, (target_file.stat() catch |e| {
-        std.debug.print("target.txt stat err: {}\n", .{e});
-        return @errorToInt(e);
-    }).size);
-
-    target_buf = allocator.alloc(u8, file_len) catch |e| {
-        std.debug.print("target_buf alloc err: {}\n", .{e});
-        return @errorToInt(e);
-    };
-
-    // BUG: readAll seems to block
-    // _ = target_file.readAll(target_buf) catch |e| {
-    var total_bytes_read: usize = 0;
-    while (target_file.read(target_buf[total_bytes_read..])) |bytes_read| {
-        if (bytes_read == 0) break;
-        total_bytes_read += bytes_read;
-    } else |err| {
-        std.debug.print("err: {}\n", .{err});
-        return @errorToInt(err);
-    }
-
     chibi.sexp_scheme_init();
 
     chibi_ctx = chibi.sexp_make_eval_context(null, null, null, 0, 0);
@@ -159,7 +131,6 @@ export fn init() u16 {
 export fn deinit() void {
     _ = chibi.sexp_destroy_context(chibi_ctx);
     preopens.deinit();
-    allocator.free(target_buf);
 }
 
 fn print_chibi_value(val: chibi.sexp) void {
