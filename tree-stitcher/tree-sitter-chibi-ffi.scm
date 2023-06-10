@@ -33,7 +33,7 @@
 
 (define-c (array (const TSQueryMatch) null) matches_ExecQueryResult (ExecQueryResult))
 
-(define-c string transform_ExecQueryResult (ExecQueryResult sexp (value ctx sexp)))
+(define-c sexp transform_ExecQueryResult (ExecQueryResult sexp (value ctx sexp)))
 
 (define-c
   ;; FIXME: leaking!

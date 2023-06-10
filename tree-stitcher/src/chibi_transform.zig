@@ -184,6 +184,10 @@ fn node_to_ast(
 
 const none: chibi.sexp = null;
 
+fn Result(comptime Ok: type, comptime Err: type) type {
+    return union (enum) { err: Err, ok: Ok };
+}
+
 const MatchTransformer = struct {
     query_ctx: *bindings.ExecQueryResult,
     ctx: chibi.sexp,
@@ -191,6 +195,25 @@ const MatchTransformer = struct {
 
     env: chibi.sexp,
     sexp_self: chibi.sexp, // for exceptions
+
+    const Error = union (enum) {
+        badCapture: []const u8,
+        badField: []const u8,
+        fieldAfterNonField: void,
+        fieldWithoutReplacement: []const u8,
+
+        fn format(self: @This(), alloc: std.mem.Allocator) []const u8 {
+            return switch (self) {
+                .badCapture => |name| std.fmt.allocPrint(alloc, "capture '{s}' not in query", .{name}) catch unreachable,
+                .badField => |name| std.fmt.allocPrint(alloc, "field '{s}' not on that node", .{name}) catch unreachable,
+                .fieldAfterNonField => "fields may not follow non-fields",
+                .fieldWithoutReplacement => |name| std.fmt.allocPrint(alloc, "field '{s}' in transform was not followed by its replacement", .{name}) catch unreachable,
+            };
+        }
+    };
+
+    const TransformResult = Result(chibi.sexp, Error);
+
 
     fn new(query_ctx: *bindings.ExecQueryResult, ctx: chibi.sexp, transform: chibi.sexp) @This() {
         const env = chibi._sexp_context_env(ctx);
@@ -214,7 +237,7 @@ const MatchTransformer = struct {
         chibi_ctx: chibi.sexp,
         match: ts._c.TSQueryMatch,
         transform: chibi.sexp,
-    ) chibi.sexp {
+    ) TransformResult {
         // TODO: document better that we always add a root capture to the end of the query
         const root_node = ts.Node{._c = match.captures[match.capture_count - 1].node};
         const result = MatchTransformer
@@ -240,9 +263,9 @@ const MatchTransformer = struct {
         transform_expr: chibi.sexp,
         node: ts.Node,
         in_ast_expansion: bool,
-    ) chibi.sexp {
+    ) TransformResult {
         if (chibi._sexp_pairp(transform_expr) == 0)
-            return transform_expr;
+            return TransformResult{.ok = transform_expr};
 
         const car = chibi._sexp_car(transform_expr);
         const list_starts_with_symbol = chibi._sexp_symbolp(car) != 0; 
@@ -258,7 +281,8 @@ const MatchTransformer = struct {
                 // FIXME: the capture order is in captured node source order, so this naive analysis is probably wrong
                 const capture_index = match.capture_count - 1 - (
                     self.query_ctx.capture_name_to_index.get(symbol_slice)
-                    orelse std.debug.panic("couldn't find capture {s}", .{symbol_slice})
+                    // NOTE: error references memory owned by the scheme context
+                    orelse return TransformResult{.err = Error{.badCapture = symbol_slice}}
                   );
 
                 const capture = match.captures[capture_index];
@@ -280,25 +304,34 @@ const MatchTransformer = struct {
                         const child_symbol_slice = child_symbol_str[0..std.mem.len(child_symbol_str)];
                         const is_field_ref = std.mem.endsWith(u8, child_symbol_slice, ":");
                         if (is_field_ref) {
-                            if (done_with_fields) @panic("fields are illegal after non-fields");
+                            if (done_with_fields) return TransformResult{.err=.fieldAfterNonField};
+                    
                             child_list = chibi._sexp_cdr(child_list);
-                            // FIXME: error handling
-                            if (chibi._sexp_nullp(child_list) != 0) @panic("field without replacement");
                             const field_name = child_symbol_slice[0..child_symbol_slice.len - 1];
+                            if (chibi._sexp_nullp(child_list) != 0)
+                                return TransformResult{.err=Error{.fieldWithoutReplacement=field_name}};
                             const field_replacement = chibi._sexp_car(child_list);
                             // FIXME: error handling
                             const field_node = node.child_by_field_name(field_name)
-                                orelse std.debug.panic("bad field name {s}\n", .{field_name});
-                            const transformed_field_replacement =
-                                self.transform_match_impl(match, field_replacement, field_node, true);
-                            fields.put(field_name, transformed_field_replacement) catch @panic("put field failed");
+                                orelse return TransformResult{.err=Error{.badField=field_name}};
+                            const transformed_field_replacement = switch (
+                                self.transform_match_impl(match, field_replacement, field_node, true)
+                            ) {
+                                .err => |err| return TransformResult{.err = err},
+                                .ok => |val| val,
+                            };
+                            fields.put(field_name, transformed_field_replacement)
+                                catch @panic("put field failed");
                             continue;
                         }
                     } else {
                         done_with_fields = true;
                         const to_append = to_append_list.addOne(std.heap.c_allocator) catch unreachable;
                         // FIXME: returning a symbol won't work here...
-                        to_append.* = self.transform_match_impl(match, child, node, true);
+                        to_append.* = switch(self.transform_match_impl(match, child, node, true)) {
+                            .err => |err| return TransformResult{.err = err},
+                            .ok => |val| val,
+                        };
                     }
                 }
 
@@ -317,26 +350,41 @@ const MatchTransformer = struct {
                 // nodes as forms in the lang namespace
                 //_ = in_ast_expansion;
 
-                return ast;
+                return TransformResult{.ok=ast};
             }
         }
 
         // not a list starting with a capture
-        const new_car = self.transform_match_impl(match, car, node, in_ast_expansion);
+        const new_car = switch (self.transform_match_impl(match, car, node, in_ast_expansion)) {
+            .err => |e| return TransformResult{.err = e},
+            .ok => |val| val,
+        };
         const cdr = chibi._sexp_cdr(transform_expr);
         const cdr_not_null = chibi._sexp_nullp(cdr) == 0;
         const new_cdr =
-            if (cdr_not_null) self.transform_match_impl(match, cdr, node, in_ast_expansion)
+            // FIXME: is there a better way to do this?
+            if (cdr_not_null) switch (self.transform_match_impl(match, cdr, node, in_ast_expansion)) {
+                .err => |e| return TransformResult{.err=e},
+                .ok => |val| val,
+            }
             else chibi.SEXP_NULL;
-        return chibi._sexp_cons(self.ctx, new_car, new_cdr);
+
+        return TransformResult{.ok = chibi._sexp_cons(self.ctx, new_car, new_cdr)};
     }
 };
 
 // FIXME: completely ignoring the garbage collector all over the place... going to be bad
-export fn transform_ExecQueryResult(query_ctx: *bindings.ExecQueryResult, transform: chibi.sexp, ctx: chibi.sexp) [*c]const u8 {
+export fn transform_ExecQueryResult(query_ctx: *bindings.ExecQueryResult, transform: chibi.sexp, ctx: chibi.sexp) chibi.sexp {
     const env = chibi._sexp_context_env(ctx);
     var chunks = std.SegmentedList([]const u8, 64){};
     defer chunks.deinit(std.heap.c_allocator);
+
+    const sexp_self = chibi.sexp_env_ref(
+        ctx, env,
+        chibi.sexp_intern(ctx, "transform_ExecQueryResult", -1), none
+    );
+    if (sexp_self == none)
+        @panic("could not find owning function bindings in environment");
 
     const match_count = std.mem.len(query_ctx.matches);
     var i: usize = 0;
@@ -351,7 +399,12 @@ export fn transform_ExecQueryResult(query_ctx: *bindings.ExecQueryResult, transf
             };
             i = end;
 
-            const transformed_ast = MatchTransformer.transform_match(query_ctx, ctx, match.*, transform);
+            const transformed_ast = switch(MatchTransformer.transform_match(query_ctx, ctx, match.*, transform)) {
+                .ok => |v| v,
+                // FIXME: need a finalizer for this allocated memory
+                .err => |e| return chibi.sexp_user_exception(
+                    ctx, sexp_self, e.format(std.heap.c_allocator).ptr, transform),
+            };
 
             // if I do it this way, then @capture must be a function that merges its arguments into
             // its value, which is basically what I already have in lisp with make-complex-node, no?
@@ -389,11 +442,8 @@ export fn transform_ExecQueryResult(query_ctx: *bindings.ExecQueryResult, transf
             if (std.os.getenv("DEBUG") != null)
                 chibi._sexp_debug(ctx, "after eval:", transformed_ast);
 
-            if (chibi._sexp_exceptionp(transform_result) != 0) {
-                chibi._sexp_debug(ctx, "exception: ", transform_result);
-                chibi._sexp_print_exception(ctx, transform_result, chibi._sexp_current_error_port(ctx));
-                @panic("can't return exception with this signature yet so boom");
-            }
+            if (chibi._sexp_exceptionp(transform_result) != 0)
+                return transform_result;
 
             // TODO: type check it's not a list
             if (chibi._sexp_stringp(transform_result) == 0) {
@@ -408,26 +458,21 @@ export fn transform_ExecQueryResult(query_ctx: *bindings.ExecQueryResult, transf
                     chibi._sexp_debug(ctx, "after stringify:", transform_result);
             }
 
-            if (chibi._sexp_exceptionp(transform_result) != 0) {
-                chibi._sexp_debug(ctx, "exception: ", transform_result);
-                chibi._sexp_print_exception(ctx, transform_result, chibi._sexp_current_error_port(ctx));
-                @panic("can't return exception with this signature yet so boom");
-            }
+            if (chibi._sexp_exceptionp(transform_result) != 0)
+                return transform_result;
 
             // FIXME: when is transform_result garbage collected? need to valgrind...
             const transform_as_str = chibi._sexp_string_data(transform_result);
             const transform_as_str_len = chibi._sexp_string_size(transform_result);
-            chunks.append(std.heap.c_allocator, transform_as_str[0..transform_as_str_len]) catch |err| {
-                std.log.err("Error allocating output chunk: {any}\n", .{err});
-                return null;
+            chunks.append(std.heap.c_allocator, transform_as_str[0..transform_as_str_len]) catch {
+                return chibi.sexp_user_exception(ctx, sexp_self, "error allocating output chunk", transform);
             };
         }
     }
 
     // NOTE: can avoid appending this one...
-    chunks.append(std.heap.c_allocator, query_ctx.buff[i..]) catch |err| {
-        std.log.err("Error allocating output chunk: {any}\n", .{err});
-        return null;
+    chunks.append(std.heap.c_allocator, query_ctx.buff[i..]) catch {
+        return chibi.sexp_user_exception(ctx, sexp_self, "error allocating last chunk", transform);
     };
 
     // TODO: wrap chunks.append so this is recorded everytime we push instead of at the end in another pass here
@@ -440,7 +485,9 @@ export fn transform_ExecQueryResult(query_ctx: *bindings.ExecQueryResult, transf
         break :_ result;
     };
 
-    var result_buffer = std.heap.c_allocator.allocSentinel(u8, chunks_aggregate_len, 0) catch unreachable;
+    var result_buffer = std.heap.c_allocator.allocSentinel(u8, chunks_aggregate_len, 0) catch {
+        return chibi.sexp_user_exception(ctx, sexp_self, "error allocating aggregate buffer", transform);
+    };
 
     {
         var chunk_iter = chunks.constIterator(0);
@@ -451,6 +498,8 @@ export fn transform_ExecQueryResult(query_ctx: *bindings.ExecQueryResult, transf
         }
     }
     
-    return result_buffer.ptr;
+    // TODO: use @fieldParentPtr to finalize the result
+    const string_result = chibi.sexp_c_string(ctx, result_buffer.ptr, @intCast(c_long, result_buffer.len));
+    return string_result;
 }
 
