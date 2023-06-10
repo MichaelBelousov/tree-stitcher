@@ -6,16 +6,16 @@ const path = std.fs.path;
 const c_flags = .{"-std=c99", "-DNDEBUG=", "-Dfprintf(...)=", "-fno-exceptions"};
 
 pub fn libPkgStep(b: *std.build.Builder, rel_path: []const u8) !*std.build.LibExeObjStep {
-    const lib = b.addStaticLibrary("tree-sitter", "./tree_sitter.zig");
+    const lib = b.addStaticLibrary("tree-sitter", try path.join(b.allocator, &.{rel_path, "tree_sitter.zig"}));
     try populateTreeSitterStep(lib, rel_path);
     return lib;
 }
 
-pub fn pkg(b: *std.build.Builder, rel_path: []const u8) std.build.Pkg {
+pub fn pkg(b: *std.build.Builder, rel_path: []const u8) !std.build.Pkg {
     return .{
         .name = "tree-sitter",
         .source = std.build.FileSource{
-            .path = path.join(b.allocator, &.{ rel_path, "tree_sitter.zig" })
+            .path = try path.join(b.allocator, &.{ rel_path, "tree_sitter.zig" })
         },
         .dependencies = null,
     };
