@@ -447,11 +447,7 @@ export fn transform_ExecQueryResult(query_ctx: *bindings.ExecQueryResult, transf
 
             // TODO: type check it's not a list
             if (chibi._sexp_stringp(transform_result) == 0) {
-                const ast_to_string = chibi.sexp_env_ref(
-                    ctx, env, chibi.sexp_intern(ctx, "ast->string", -1), none
-                );
-                if (ast_to_string == none)
-                    @panic("could not find owning function bindings in environment");
+                const ast_to_string = chibi.sexp_intern(ctx, "ast->string", -1);
                 transform_result = chibi._sexp_list2(ctx, ast_to_string, transform_result);
                 transform_result = chibi._sexp_eval(ctx, transform_result, null);
                 if (std.os.getenv("DEBUG") != null)
