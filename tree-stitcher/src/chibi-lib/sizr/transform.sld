@@ -4,7 +4,8 @@
     ; (scheme file)
     (scheme read)
     (scheme write))
-  (export transform ast->string expr->string string->expr)
+  (export transform ast->string expr->string string->expr
+          _ [ ])
 
   ;; bindings seem unreachable without this?
   ;; FIXME: see how eval.sld works, maybe importing (meta) will suffice?
@@ -12,4 +13,5 @@
     (define exec_query exec_query)
     (define transform_ExecQueryResult transform_ExecQueryResult))
 
-  (include "transform.scm"))
+  (include "transform.scm")
+  (include "langs/base.scm"))

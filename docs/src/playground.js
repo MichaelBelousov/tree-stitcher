@@ -36,15 +36,16 @@ function handleNativeError(nativeCallResult) {
 }
 
 const defaultProgram = `\
-(transform
-  ; the query selection
-  ((function_definition body: (_) @body))
+(display
+  (transform
+    ; the query selection
+    ((function_definition body: (_) @body))
 
-  ; the replacement of that selection
-  (@body)
+    ; the replacement of that selection
+    (string-append (ast->string (@body)) (comment "// end of body"))
 
-  ; the workspace in which to run the query (the file on the right)
-  playground-workspace)
+    ; the workspace in which to run the query (the file on the right)
+    playground-workspace))
 `
 
 const defaultTarget = `\
@@ -133,7 +134,7 @@ async function loadFileSystem(fs) {
 
   await Promise.all(
     Object.entries(files)
-      .map(([f, dir]) => fetch(f)
+      .map(([f, dir]) => fetch(f.startsWith("http") ? f : `tree-stitcher/${f}`)
         .then(resp => resp.arrayBuffer())
         .then(buff => {
           const basename = f.split('/').pop()

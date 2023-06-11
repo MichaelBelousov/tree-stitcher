@@ -59,6 +59,7 @@
 
   "/tree-stitcher/src/chibi-lib/sizr/langs/support.sld": "/chibi/sizr/langs",
   "/tree-stitcher/src/chibi-lib/sizr/langs/support.scm": "/chibi/sizr/langs",
+  "/tree-stitcher/src/chibi-lib/sizr/langs/base.scm": "/chibi/sizr/langs",
   "/tree-stitcher/src/chibi-lib/sizr/langs/cpp.sld": "/chibi/sizr/langs",
   "/tree-stitcher/src/chibi-lib/sizr/langs/cpp.scm": "/chibi/sizr/langs",
   "/tree-stitcher/src/chibi-lib/sizr/transform.scm": "/chibi/sizr",
