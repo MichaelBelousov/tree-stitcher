@@ -74,9 +74,50 @@ const NodeTypesFile = []const struct {
     }),
 };
 
+// TODO:
+const JsonSchemaErrors = error {};
+
 // high-level overview:
 // see if we can use the node-types.json's fields property to generate the necessary
 // ast builders
+
+/// given a json value pointing to this type: {type: string, named: boolean}[],
+/// if there is only one non-hidden element with named=true, return it
+fn getOnlyNamedType(type_list: json.Value) !?json.ObjectMap {
+    var found: ?json.ObjectMap = null;
+
+    switch (type_list) {
+        .Array => |a| for (a.items) |maybe_type| switch (maybe_type) {
+            .Object => |type_| {
+                // TODO: dedup with below?
+                const is_named_node = if (type_.get("named")) |type_name| switch (type_name) {
+                    .Bool => |s| s,
+                    else => return error.TypeNamedNotBool,
+                } else return error.TypeWithoutNamedProperty;
+
+                if (!is_named_node)
+                continue;
+
+                const type_name = if (type_.get("type")) |type_type| switch (type_type) {
+                    .String => |s| s,
+                    else => return error.TypeTypeNotString,
+                } else return error.TypeWithoutTypeProperty;
+
+                const is_hidden_node = std.mem.startsWith(u8, type_name, "_");
+                if (is_hidden_node)
+                continue;
+
+                // this is the second, so it's not the only one, return empty
+                if (found != null) return null
+                else found = type_;
+            },
+            else => return error.TypeListElementNotObject
+        },
+        else => return error.TypeListNotArray,
+    }
+
+    return found;
+}
 
 pub fn convertNodeTypes(
     allocator: std.mem.Allocator,
@@ -147,8 +188,6 @@ pub fn convertNodeTypes(
                 var field_iterator1 = fields.iterator();
                 while (field_iterator1.next()) |field| {
                     const field_name = field.key_ptr;
-                    const field_type = field.value_ptr;
-                    _ = field_type;
                     const had = try field_set.fetchPut(field_name.*, {});
                     if (had == null) {
                         _ = try std.fmt.format(write_ctx, "(define {s} '{s})\n", .{field_name.*, field_name.*});
@@ -159,7 +198,37 @@ pub fn convertNodeTypes(
                 _ = try std.fmt.format(write_ctx, "(define-complex-node {s}\n  (", .{node_type_name});
                 while (field_iterator2.next()) |field| {
                     const field_name = field.key_ptr;
-                    _ = try std.fmt.format(write_ctx, "({s}: {s})\n  ", .{field_name.*, "(DEFAULT_TYPE_IF_1)"});
+                    const field_val = field.value_ptr;
+                    const maybe_single_field_type = switch (field_val.*) {
+                        .Object => |o| if (o.get("types")) |field_types| try getOnlyNamedType(field_types)
+                            else return error.FieldWithoutTypes,
+                        else => return error.FieldNotObject,
+                    };
+
+                    const field_required = switch (field_val.*) {
+                        .Object => |o| if (o.get("required")) |required| switch (required) {
+                            .Bool => |b| b,
+                            else => return error.FieldRequiredNotBool,
+                        } else return error.FieldWithoutRequiredProperty,
+                        else => return error.FieldNotObject,
+                    };
+
+                    if (maybe_single_field_type) |single_field_type| {
+                        const single_field_type_name = if (single_field_type.get("type")) |single_field_type_name| switch (single_field_type_name) {
+                            .String => |s| s,
+                            else => return error.TypeTypeNotString,
+                        } else return error.TypeWithoutTypeProperty;
+
+                        _ = try std.fmt.format(
+                            write_ctx,
+                            "({s}: ({s}))\n  ",
+                            .{field_name.*, single_field_type_name}
+                        );
+                    } else if (field_required) {
+                        _ = try std.fmt.format(write_ctx, "({s}:)\n  ", .{field_name.*});
+                    } else {
+                        _ = try std.fmt.format(write_ctx, "({s}: \"\")\n  ", .{field_name.*});
+                    }
                 }
                 _ = try write_ctx.write("))\n");
             } else {
