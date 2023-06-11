@@ -37,13 +37,13 @@ function handleNativeError(nativeCallResult) {
 
 const defaultProgram = `\
 (transform
-  ; the query
+  ; the query selection
   ((function_definition body: (_) @body))
 
-  ; the transform of that query
+  ; the replacement of that selection
   (@body)
 
-  ; the workspace in which to run the query
+  ; the workspace in which to run the query (the file on the right)
   playground-workspace)
 `
 
@@ -166,21 +166,25 @@ async function main() {
 
   const inst = wasi.instantiate(module, {})
 
-  const targetFile = wasi.fs.open('/target.txt', {read: true, write: true, create: true})
-
   await loadFileSystem(wasi.fs)
 
   handleNativeError(inst.exports.init())
 
   wasi.setStdinString('(load "/playground/playground-prelude.scm")')
   handleNativeError(inst.exports.eval_stdin())
+  // ignore initial output (e.g. warnings lol)
+  console.log("prelude stdout:", wasi.getStdoutString())
+  console.log("prelude stderr:", wasi.getStderrString())
 
   runButton.addEventListener('click', () => {
     const program = programEditor.value
-    wasi.setStdinString(program)
+    const targetFile = wasi.fs.open('/target.txt', {read: true, write: true, create: true})
     targetFile.setLength(BigInt(0));
+    targetFile.writeString(targetEditor.value);
     targetFile.seek(0);
-    targetFile.writeString(targetEditor.value)
+    targetFile.free();
+
+    wasi.setStdinString(program)
     handleNativeError(inst.exports.eval_stdin())
     output.textContent = wasi.getStdoutString() + '\n'
   })

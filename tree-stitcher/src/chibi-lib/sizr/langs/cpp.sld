@@ -29,6 +29,7 @@
     init_declarator
     function_declarator
     function_definition
+    declaration
     comment
   )
 

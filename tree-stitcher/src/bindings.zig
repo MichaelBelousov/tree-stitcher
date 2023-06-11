@@ -168,7 +168,7 @@ fn exec_query_impl(
     try captureIndicesFromQueryStr(query, &result.capture_name_to_index);
 
     // note the result.buff takes over ownership and will free this
-    var file = FileBuffer.fromDirAndPath(std.heap.c_allocator, std.fs.cwd(), target) catch |err| {
+    var file = FileBuffer.fromAbsPath(std.heap.c_allocator, target) catch |err| {
       std.debug.print("error '{}' opening file: '{s}'\n", .{err, target});
       return err;
     };

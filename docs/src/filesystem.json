@@ -21,7 +21,7 @@
   "https://raw.githubusercontent.com/MichaelBelousov/chibi-scheme/wasm-lib/lib/srfi/125/hash.scm": "/chibi/srfi/125",
   "https://raw.githubusercontent.com/MichaelBelousov/chibi-scheme/wasm-lib/lib/srfi/128.sld": "/chibi/srfi",
   "https://raw.githubusercontent.com/MichaelBelousov/chibi-scheme/wasm-lib/lib/srfi/128/comparators.scm": "/chibi/srfi/128",
-  "https://raw.githubusercontent.com/MichaelBelousov/chibi-scheme/wasm-lib/lib/srfi/128/162-impl.scm": "/chibi/srfi/128.bak",
+  "https://raw.githubusercontent.com/MichaelBelousov/chibi-scheme/wasm-lib/lib/srfi/128/162-impl.scm": "/chibi/srfi/128",
   "https://raw.githubusercontent.com/MichaelBelousov/chibi-scheme/wasm-lib/lib/srfi/151.sld": "/chibi/srfi",
   "https://raw.githubusercontent.com/MichaelBelousov/chibi-scheme/wasm-lib/lib/srfi/151/bitwise.scm": "/chibi/srfi/151",
 

@@ -33,6 +33,9 @@
   ((type: (primitive_type))
    (declarator:)
    (body: (compound_statement))))
+(define-complex-node declaration
+  ((type: (primitive_type "int"))
+   (declarator:)))
 
 (define-simple-node comment) ;; hmmmm
 
