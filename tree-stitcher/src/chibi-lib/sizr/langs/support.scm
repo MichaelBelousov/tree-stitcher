@@ -4,7 +4,7 @@
   (syntax-rules ()
     ((define-simple-node name)
       (define (name . children)
-        (cons name children)))))
+        (cons 'name children)))))
 
 (define-syntax define-debug-node
   (syntax-rules ()

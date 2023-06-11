@@ -34,7 +34,6 @@
    (declarator:)
    (body: (compound_statement))))
 
-(define-simple-node function_definition)
 (define-simple-node comment) ;; hmmmm
 
 
