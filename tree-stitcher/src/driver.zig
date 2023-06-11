@@ -134,7 +134,9 @@ export fn deinit() void {
 }
 
 fn print_chibi_value(val: chibi.sexp) void {
-    if (chibi._sexp_exceptionp(val) != 0) {
+    if (chibi.SEXP_VOID == val) {
+        // do nothing
+    } else if (chibi._sexp_exceptionp(val) != 0) {
         chibi._sexp_print_exception(chibi_ctx, val, chibi._sexp_current_error_port(chibi_ctx));
         chibi._sexp_write_char(chibi_ctx, '\n', chibi._sexp_current_error_port(chibi_ctx));
         chibi._sexp_flush(chibi_ctx, chibi._sexp_current_error_port(chibi_ctx));
