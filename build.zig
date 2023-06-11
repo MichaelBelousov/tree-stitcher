@@ -39,14 +39,6 @@ pub fn build(b: *std.build.Builder) !void {
     exe.addPackage(tree_sitter_pkg);
     exe.setTarget(target);
 
-    const ast_helper_gen_exe = b.addExecutable("ast-helper-gen", "tree-stitcher/src/ast_helper_gen.zig");
-    ast_helper_gen_exe.setTarget(target);
-    ast_helper_gen_exe.addPackage(zig_clap_package);
-    ast_helper_gen_exe.linkLibC();
-    ast_helper_gen_exe.install();
-    const build_ast_helper_gen = b.step("ast-helper-gen", "Build the ast-helper-gen tool");
-    build_ast_helper_gen.dependOn(&ast_helper_gen_exe.step);
-
     const build_chibi_bindings_src = b.addSystemCommand(&.{ "chibi-ffi", "tree-stitcher/tree-sitter-chibi-ffi.scm" });
     // TODO: ask tree-sitter to tag their struct typedefs
     const patch_chibi_bindings_src = b.addSystemCommand(&[_][]const u8{
@@ -67,11 +59,8 @@ pub fn build(b: *std.build.Builder) !void {
     query_binding.step.dependOn(&patch_chibi_bindings_src.step);
 
     var webTarget = target;
-    // FIXME: use setPreferredTarget instead
-    //webTarget.cpu_arch = .wasm32;
-    //webTarget.os_tag = .wasi;
-
     const webdriver = b.addExecutable("webdriver", "tree-stitcher/src/driver.zig");
+    // FIXME: use setPreferredBuildMode or something
     webdriver.setBuildMode(mode);
     webdriver.setTarget(webTarget);
     webdriver.step.dependOn(&patch_chibi_bindings_src.step);
@@ -150,11 +139,11 @@ pub fn build(b: *std.build.Builder) !void {
         artifact.linkLibC();
         artifact.linkSystemLibrary("c++");
         // TODO: move thirdparty up to share it more appropriately
-        artifact.addIncludePath("../thirdparty/tree-sitter/lib/include");
-        artifact.addLibraryPath("../thirdparty/tree-sitter");
+        artifact.addIncludePath("thirdparty/tree-sitter/lib/include");
+        artifact.addLibraryPath("thirdparty/tree-sitter");
         artifact.linkSystemLibrary("tree-sitter");
-        artifact.addCSourceFile("../thirdparty/tree-sitter-cpp/src/parser.c", &.{"-std=c99"});
-        artifact.addCSourceFile("../thirdparty/tree-sitter-cpp/src/scanner.cc", &.{"-std=c++14"});
+        artifact.addCSourceFile("thirdparty/tree-sitter-cpp/src/parser.c", &.{"-std=c99"});
+        artifact.addCSourceFile("thirdparty/tree-sitter-cpp/src/scanner.cc", &.{"-std=c++14"});
         artifact.addPackage(tree_sitter_pkg);
     }
 
@@ -179,5 +168,25 @@ pub fn build(b: *std.build.Builder) !void {
 
     const run_tsquery_step = b.step("query", "Run tsquery");
     run_tsquery_step.dependOn(&run_tsquery_cmd.step);
+
+    const ast_helper_gen_exe = try buildAstHelperGen(b);
+    ast_helper_gen_exe.setTarget(target);
+
+    const build_ast_helper_gen = b.step("ast-helper-gen", "Build the ast-helper-gen tool");
+    build_ast_helper_gen.dependOn(&ast_helper_gen_exe.install_step.?.step);
+
+    const run_ast_helper_gen = ast_helper_gen_exe.run();
+    run_ast_helper_gen.step.dependOn(&ast_helper_gen_exe.install_step.?.step);
+    if (b.args) |args| run_ast_helper_gen.addArgs(args);
+    const run_ast_helper_gen_option = b.step("run-ast-helper-gen", "Run ast-helper-gen");
+    run_ast_helper_gen_option.dependOn(&run_ast_helper_gen.step);
 }
 
+pub fn buildAstHelperGen(b: *std.build.Builder) !*std.build.LibExeObjStep {
+    const ast_helper_gen_exe = b.addExecutable("ast-helper-gen", "tree-stitcher/src/ast_helper_gen.zig");
+    ast_helper_gen_exe.addPackage(zig_clap_package);
+    ast_helper_gen_exe.linkLibC();
+    ast_helper_gen_exe.install();
+
+    return ast_helper_gen_exe;
+}
