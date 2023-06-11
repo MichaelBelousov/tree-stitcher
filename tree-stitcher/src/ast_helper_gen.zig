@@ -105,6 +105,7 @@ pub fn convertNodeTypes(
         //     .{.allocator = allocator}
         // );
         // std.debug.print("parsed2: {any}\n", .{ parsed2 });
+        _ = try std.fmt.format(write_ctx, ";; ast-helper-gen for '{s}'\n", .{rel_path});
 
         const node_types = switch (parsed.root) {
             .Array => |a| a.items,
@@ -126,18 +127,19 @@ pub fn convertNodeTypes(
             };
 
             const is_hidden_node = std.mem.startsWith(u8, node_type_name, "_");
-            if (is_hidden_node)
+            if (is_hidden_node) {
                 continue;
+            }
 
             const is_anonymous_node = switch (node_type.get("named") orelse return error.NodeTypeWithoutNamedProperty) {
-                .Bool => |s| s,
+                .Bool => |s| !s,
                 else => return error.NodeTypeNamedNotBool,
             };
             if (is_anonymous_node)
                 continue;
 
             const maybe_fields = if (node_type.get("fields")) |fields_val| switch (fields_val) {
-                .Object => |o| o,
+                .Object => |o| if (o.count() > 0) o else null,
                 else => return error.NodeTypeFieldsNotObject,
             } else null;
 
@@ -148,7 +150,7 @@ pub fn convertNodeTypes(
                     const field_type = field.value_ptr;
                     _ = field_type;
                     const had = try field_set.fetchPut(field_name.*, {});
-                    if (had != null) {
+                    if (had == null) {
                         _ = try std.fmt.format(write_ctx, "(define {s} '{s})\n", .{field_name.*, field_name.*});
                     }
                 }
@@ -157,9 +159,7 @@ pub fn convertNodeTypes(
                 _ = try std.fmt.format(write_ctx, "(define-complex-node {s}\n  (", .{node_type_name});
                 while (field_iterator2.next()) |field| {
                     const field_name = field.key_ptr;
-                    //write_ctx.write("({}: {})\n  ", .{field_name.*, "(DEFAULT_TYPE_IF_1)"});
                     _ = try std.fmt.format(write_ctx, "({s}: {s})\n  ", .{field_name.*, "(DEFAULT_TYPE_IF_1)"});
-                    //std.fmt.format(write_ctx, );
                 }
                 _ = try write_ctx.write("))\n");
             } else {
