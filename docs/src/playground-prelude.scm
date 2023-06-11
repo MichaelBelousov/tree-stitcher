@@ -16,9 +16,3 @@
 (define in-playground #t)
 (define playground-workspace '("/target.txt"))
 
-;; (transform
-;;   ((function_definition body: (_) @body))
-;;   (@body )
-;;   playground-workspace)
-
-(transform ((identifier) @i) (@i) '("target.txt"))
