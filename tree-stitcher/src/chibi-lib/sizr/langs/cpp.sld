@@ -11,10 +11,14 @@
   abstract_array_declarator
   parameters:
   abstract_function_declarator
+  abstract_parenthesized_declarator
   abstract_pointer_declarator
+  abstract_reference_declarator
+  access_specifier
   name:
   type:
   alias_declaration
+  argument_list
   array_declarator
   left:
   operator:
@@ -22,7 +26,14 @@
   assignment_expression
   prefix:
   attribute
+  attribute_declaration
+  attribute_specifier
+  attributed_declarator
+  attributed_statement
+  base_class_clause
   binary_expression
+  bitfield_clause
+  break_statement
   arguments:
   function:
   call_expression
@@ -31,11 +42,17 @@
   cast_expression
   body:
   catch_clause
+  char_literal
   class_specifier
   argument:
   co_await_expression
+  co_return_statement
+  co_yield_statement
   comma_expression
   compound_literal_expression
+  compound_requirement
+  compound_statement
+  concatenated_string
   concept_definition
   initializer:
   condition_clause
@@ -45,86 +62,169 @@
   conditional_expression
   constraint_conjunction
   constraint_disjunction
+  continue_statement
   default_value:
   declaration
+  declaration_list
+  decltype
+  default_method_clause
+  delete_expression
+  delete_method_clause
+  dependent_name
+  dependent_type
+  destructor_name
   do_statement
   base:
   enum_specifier
   enumerator
+  enumerator_list
+  explicit_function_specifier
+  expression_statement
   field_declaration
+  field_declaration_list
+  field_designator
   field:
   field_expression
+  field_initializer
+  field_initializer_list
   fold_expression
   for_range_loop
   update:
   for_statement
+  friend_declaration
   function_declarator
   function_definition
   label:
   goto_statement
   if_statement
   init_declarator
+  init_statement
+  initializer_list
   designator:
   initializer_pair
   labeled_statement
+  lambda_capture_specifier
+  lambda_default_capture
   captures:
   constraint:
   template_parameters:
   lambda_expression
   linkage_specification
+  ms_based_modifier
+  ms_call_modifier
+  ms_declspec_modifier
+  ms_pointer_modifier
+  ms_unaligned_ptr_modifier
   namespace_alias_definition
   namespace_definition
+  nested_namespace_specifier
   length:
   new_declarator
   placement:
   new_expression
+  noexcept
   operator_cast
+  operator_name
   optional_parameter_declaration
   default_type:
   optional_type_parameter_declaration
   parameter_declaration
+  parameter_list
   pattern:
   parameter_pack_expansion
+  parenthesized_declarator
+  parenthesized_expression
   placeholder_type_specifier
   pointer_declarator
   pointer_expression
   directive:
   preproc_call
   preproc_def
+  preproc_defined
   preproc_elif
+  preproc_else
   preproc_function_def
   preproc_if
   preproc_ifdef
   path:
   preproc_include
+  preproc_params
   scope:
   qualified_identifier
   delimiter:
   raw_string_literal
+  ref_qualifier
+  reference_declarator
+  requirement_seq
   requires_clause
   requirements:
   requires_expression
+  return_statement
+  simple_requirement
   sized_type_specifier
   sizeof_expression
   message:
   static_assert_declaration
+  storage_class_specifier
+  string_literal
   struct_specifier
+  structured_binding_declarator
+  subscript_designator
   index:
   subscript_expression
   switch_statement
+  template_argument_list
   template_declaration
   template_function
   template_instantiation
   template_method
+  template_parameter_list
   template_template_parameter_declaration
   template_type
+  throw_specifier
+  throw_statement
+  trailing_return_type
+  translation_unit
   try_statement
   type_definition
   type_descriptor
+  type_parameter_declaration
+  type_qualifier
+  type_requirement
   unary_expression
   union_specifier
   update_expression
+  user_defined_literal
+  using_declaration
+  variadic_declarator
   variadic_parameter_declaration
+  variadic_type_parameter_declaration
+  virtual
+  virtual_specifier
   while_statement
+  auto
+  comment
+  escape_sequence
+  false
+  field_identifier
+  identifier
+  literal_suffix
+  ms_restrict_modifier
+  ms_signed_ptr_modifier
+  ms_unsigned_ptr_modifier
+  namespace_identifier
+  null
+  nullptr
+  number_literal
+  preproc_arg
+  preproc_directive
+  primitive_type
+  raw_string_content
+  raw_string_delimiter
+  statement_identifier
+  system_lib_string
+  this
+  true
+  type_identifier
 )
   (include "cpp.scm"))
