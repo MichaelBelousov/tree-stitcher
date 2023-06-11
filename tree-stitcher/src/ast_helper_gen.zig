@@ -252,10 +252,15 @@ pub fn convertNodeTypes(
             }
         }
 
+        const maybe_last_slash_index = std.mem.lastIndexOf(u8, out_name, "/");
+        const out_base_name = if (maybe_last_slash_index)
+            |last_slash_index| out_name[last_slash_index + 1..]
+            else out_name;
+
         _ = try std.fmt.format(sld_write_ctx,
             \\)
             \\  (include "{s}.scm"))
-        , .{out_name});
+        , .{out_base_name});
     }
 }
 

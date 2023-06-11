@@ -5,7 +5,7 @@
   (scheme base)
   (scheme read)
   (scheme write))
-(export 
+(export
   declarator:
   size:
   abstract_array_declarator
@@ -127,4 +127,4 @@
   variadic_parameter_declaration
   while_statement
 )
-  (include "tree-stitcher/src/chibi-lib/sizr/langs/cpp.scm"))
+  (include "cpp.scm"))
