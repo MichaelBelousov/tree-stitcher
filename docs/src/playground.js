@@ -132,9 +132,12 @@ async function loadFileSystem(fs) {
     }
   }
 
+  const isLocalHost = window.location.hostname === "localhost";
+
   await Promise.all(
     Object.entries(files)
-      .map(([f, dir]) => fetch(f.startsWith("http") ? f : `tree-stitcher/${f}`)
+      // need to check base url since my repo redirects to a subpath of my main site
+      .map(([f, dir]) => fetch(!f.startsWith("http") && !isLocalHost ? `/tree-stitcher${f}` : f)
         .then(resp => resp.arrayBuffer())
         .then(buff => {
           const basename = f.split('/').pop()
