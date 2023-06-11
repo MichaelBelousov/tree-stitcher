@@ -49,8 +49,22 @@ const defaultProgram = `\
 `
 
 const defaultTarget = `\
-def myfunc(a, b):
-  return a + b
+#include <iostream>
+
+template<int(*F)(void)>
+int g() {
+  return F();
+}
+
+extern int(*external_f)(void);
+
+extern auto blah = [](){return 2;};
+
+int main() {
+  external_f = [](){return 5;};
+  std::cout << g<blah>() << std::endl;
+  return 0;
+}
 `
 
 let sessionProgram = sessionStorage.getItem('program')
@@ -61,7 +75,7 @@ const targetInSessionStorageIsValid = sessionTarget && sessionTarget.trim() !== 
 sessionTarget = targetInSessionStorageIsValid ? sessionTarget : defaultTarget
 
 let sessionTargetType = sessionStorage.getItem('target-type')
-sessionTargetType = targetInSessionStorageIsValid ? sessionTargetType : 'python'
+sessionTargetType = targetInSessionStorageIsValid ? sessionTargetType : 'cpp'
 
 const programEditor = /** @type {HTMLTextAreaElement} */ (document.querySelector('#program-editor'))
 programEditor.value = sessionProgram
