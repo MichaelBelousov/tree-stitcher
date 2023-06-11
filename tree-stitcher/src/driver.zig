@@ -198,8 +198,19 @@ pub fn main() !void {
             }
         }
 
-        // if (std.mem.eql(u8, "exit", line_buff[0..bytes_read]))
-        //     break;
-        eval_str(&line_buff, @intCast(i32, total_bytes_read));
+        const line = line_buff[0..total_bytes_read];
+
+        if (std.mem.eql(u8, "exit", line)) {
+            break;
+        } else if (std.mem.eql(u8, "dump_image", line)) {
+            const save_res = chibi.sexp_save_image(chibi_ctx, "chibi.img");
+            if (save_res != chibi.SEXP_TRUE) {
+                std.debug.print("failed to save image", .{});
+            } else {
+                std.debug.print("saved image to 'chibi.img'", .{});
+            }
+        } else {
+            eval_str(&line_buff, @intCast(i32, total_bytes_read));
+        }
     }
 }
