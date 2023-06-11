@@ -1,37 +1,130 @@
+;; ast-helper-gen for 'thirdparty/tree-sitter-cpp/src/node-types.json'
 (define-library (sizr langs cpp)
-  (import
-    (sizr langs support)
-    (scheme base)
-    (scheme read)
-    (scheme write))
-  ;; kind of want to export everything from cpp.sld...
-
-  (export 
-    ;fields
-    type:
-    declarator:
-    parameters:
-    body:
-    value:
-    arguments:
-    function:
-
-    ; nodes
-    primitive_type
-    number_literal
-    identifier
-    parameter_list
-    compound_statement
-    compound_statement
-    return_statement
-    argument_list
-    call_expression
-    init_declarator
-    function_declarator
-    function_definition
-    declaration
-    comment
-  )
-
-  (include "cpp.scm"))
-
+(import
+  (sizr langs support)
+  (scheme base)
+  (scheme read)
+  (scheme write))
+(export 
+  declarator:
+  size:
+  abstract_array_declarator
+  parameters:
+  abstract_function_declarator
+  abstract_pointer_declarator
+  name:
+  type:
+  alias_declaration
+  array_declarator
+  left:
+  operator:
+  right:
+  assignment_expression
+  prefix:
+  attribute
+  binary_expression
+  arguments:
+  function:
+  call_expression
+  value:
+  case_statement
+  cast_expression
+  body:
+  catch_clause
+  class_specifier
+  argument:
+  co_await_expression
+  comma_expression
+  compound_literal_expression
+  concept_definition
+  initializer:
+  condition_clause
+  alternative:
+  condition:
+  consequence:
+  conditional_expression
+  constraint_conjunction
+  constraint_disjunction
+  default_value:
+  declaration
+  do_statement
+  base:
+  enum_specifier
+  enumerator
+  field_declaration
+  field:
+  field_expression
+  fold_expression
+  for_range_loop
+  update:
+  for_statement
+  function_declarator
+  function_definition
+  label:
+  goto_statement
+  if_statement
+  init_declarator
+  designator:
+  initializer_pair
+  labeled_statement
+  captures:
+  constraint:
+  template_parameters:
+  lambda_expression
+  linkage_specification
+  namespace_alias_definition
+  namespace_definition
+  length:
+  new_declarator
+  placement:
+  new_expression
+  operator_cast
+  optional_parameter_declaration
+  default_type:
+  optional_type_parameter_declaration
+  parameter_declaration
+  pattern:
+  parameter_pack_expansion
+  placeholder_type_specifier
+  pointer_declarator
+  pointer_expression
+  directive:
+  preproc_call
+  preproc_def
+  preproc_elif
+  preproc_function_def
+  preproc_if
+  preproc_ifdef
+  path:
+  preproc_include
+  scope:
+  qualified_identifier
+  delimiter:
+  raw_string_literal
+  requires_clause
+  requirements:
+  requires_expression
+  sized_type_specifier
+  sizeof_expression
+  message:
+  static_assert_declaration
+  struct_specifier
+  index:
+  subscript_expression
+  switch_statement
+  template_declaration
+  template_function
+  template_instantiation
+  template_method
+  template_template_parameter_declaration
+  template_type
+  try_statement
+  type_definition
+  type_descriptor
+  unary_expression
+  union_specifier
+  update_expression
+  variadic_parameter_declaration
+  while_statement
+)
+  (include "tree-stitcher/src/chibi-lib/sizr/langs/cpp.scm"))

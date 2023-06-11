@@ -122,13 +122,15 @@ fn getOnlyNamedType(type_list: json.Value) !?json.ObjectMap {
 pub fn convertNodeTypes(
     allocator: std.mem.Allocator,
     paths: []const []const u8,
-    write_ctx: anytype,
+    scm_write_ctx: anytype,
+    sld_write_ctx: anytype,
+    out_name: []const u8,
 ) !void {
     var parser = json.Parser.init(allocator, false);
     defer parser.deinit();
 
-    if (paths.len == 0) {
-        std.debug.print("no paths provided\n", .{});
+    if (paths.len != 1) {
+        std.debug.print("You must provide exactly one path", .{});
         return;
     }
 
@@ -146,7 +148,18 @@ pub fn convertNodeTypes(
         //     .{.allocator = allocator}
         // );
         // std.debug.print("parsed2: {any}\n", .{ parsed2 });
-        _ = try std.fmt.format(write_ctx, ";; ast-helper-gen for '{s}'\n", .{rel_path});
+        _ = try std.fmt.format(scm_write_ctx, ";; ast-helper-gen for '{s}'\n", .{rel_path});
+        _ = try std.fmt.format(sld_write_ctx,
+            \\;; ast-helper-gen for '{s}'
+            \\(define-library (sizr langs cpp)
+            \\(import
+            \\  (sizr langs support)
+            \\  (scheme base)
+            \\  (scheme read)
+            \\  (scheme write))
+            \\(export
+            \\
+        , .{rel_path});
 
         const node_types = switch (parsed.root) {
             .Array => |a| a.items,
@@ -187,15 +200,18 @@ pub fn convertNodeTypes(
             if (maybe_fields) |fields| {
                 var field_iterator1 = fields.iterator();
                 while (field_iterator1.next()) |field| {
-                    const field_name = field.key_ptr;
-                    const had = try field_set.fetchPut(field_name.*, {});
+                    const field_name = field.key_ptr.*;
+                    const had = try field_set.fetchPut(field_name, {});
                     if (had == null) {
-                        _ = try std.fmt.format(write_ctx, "(define {s} '{s})\n", .{field_name.*, field_name.*});
+                        _ = try std.fmt.format(scm_write_ctx, "(define {s}: '{s}:)\n", .{field_name, field_name});
+                        _ = try std.fmt.format(sld_write_ctx, "  {s}:\n", .{field_name});
                     }
                 }
 
+                _ = try std.fmt.format(scm_write_ctx, "(define-complex-node {s}\n  (", .{node_type_name});
+                _ = try std.fmt.format(sld_write_ctx, "  {s}\n", .{node_type_name});
+
                 var field_iterator2 = fields.iterator();
-                _ = try std.fmt.format(write_ctx, "(define-complex-node {s}\n  (", .{node_type_name});
                 while (field_iterator2.next()) |field| {
                     const field_name = field.key_ptr;
                     const field_val = field.value_ptr;
@@ -220,21 +236,26 @@ pub fn convertNodeTypes(
                         } else return error.TypeWithoutTypeProperty;
 
                         _ = try std.fmt.format(
-                            write_ctx,
+                            scm_write_ctx,
                             "({s}: ({s}))\n  ",
                             .{field_name.*, single_field_type_name}
                         );
                     } else if (field_required) {
-                        _ = try std.fmt.format(write_ctx, "({s}:)\n  ", .{field_name.*});
+                        _ = try std.fmt.format(scm_write_ctx, "({s}:)\n  ", .{field_name.*});
                     } else {
-                        _ = try std.fmt.format(write_ctx, "({s}: \"\")\n  ", .{field_name.*});
+                        _ = try std.fmt.format(scm_write_ctx, "({s}: \"\")\n  ", .{field_name.*});
                     }
                 }
-                _ = try write_ctx.write("))\n");
+                _ = try scm_write_ctx.write("))\n");
             } else {
-                _ = try std.fmt.format(write_ctx, "(define-simple-node {s})\n", .{node_type_name});
+                _ = try std.fmt.format(scm_write_ctx, "(define-simple-node {s})\n", .{node_type_name});
             }
         }
+
+        _ = try std.fmt.format(sld_write_ctx,
+            \\)
+            \\  (include "{s}.scm"))
+        , .{out_name});
     }
 }
 
@@ -243,7 +264,8 @@ pub fn main() !void {
     defer arena.deinit();
     const allocator = arena.allocator();
     const cli_params = comptime clap.parseParamsComptime(
-        \\-h, --help    Display this help and exit
+        \\-h, --help            Display this help and exit
+        \\-o, --out-name <str>  The path and name of the produced .scm and .sld files
         \\<str>...
         \\
     );
@@ -259,8 +281,18 @@ pub fn main() !void {
 
     if (cli_args.args.help)
         return clap.usage(std.io.getStdErr().writer(), clap.Help, &cli_params);
+
+    const out_name = cli_args.args.@"out-name" orelse "out";
+
+    const scm_path = try std.fmt.allocPrint(allocator, "{s}.scm", .{out_name});
+    const scm_file = try std.fs.cwd().createFile(scm_path, .{});
+    defer scm_file.close();
+
+    const sld_path = try std.fmt.allocPrint(allocator, "{s}.sld", .{out_name});
+    const sld_file = try std.fs.cwd().createFile(sld_path, .{});
+    defer sld_file.close();
     
-    try convertNodeTypes(allocator, cli_args.positionals, std.io.getStdOut().writer());
+    try convertNodeTypes(allocator, cli_args.positionals, scm_file.writer(), sld_file.writer(), out_name);
 }
 
 // TODO: create automated tests for grammars like c++
