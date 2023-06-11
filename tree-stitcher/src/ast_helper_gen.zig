@@ -1,3 +1,12 @@
+//! Generate sizr ast helpers functions
+//!
+//! TODO:
+//! - getOnlyNamedType should count hidden node types but not return them, because
+//!   hidden node types can be a reasonable default argument
+//! - see if it's possible to provide sane defaults for hidden alternation nodes,
+//!   or otherwise merge defined defaults
+//!
+
 const builtin = @import("builtin");
 const std = @import("std");
 const json = std.json;
