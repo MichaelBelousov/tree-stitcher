@@ -43,30 +43,6 @@ const sexp = union (enum) {
 /// A buffer that contains the entire contents of a file
 const FileBuffer = @import("./FileBuffer.zig");
 
-const Grammar = struct {
-    name: []const u8,
-    word: ?[]const u8,
-    /// interface Alias {
-    ///   type: "ALIAS",
-    ///   content: Rule,
-    ///   named: boolean,
-    ///   value: string,
-    /// }
-    /// interface Rule {
-    ///   type: "CHOICE" | "REPEAT" | "SEQ" | "ALIAS" | "PATTERN"
-    ///       | "STRING" | "FIELD" | "IMMEDIATE_TOKEN" | "BLANK",
-    ///   name?: string,
-    ///   members?: Rule[],
-    /// }
-    rules: json.ValueTree,
-    extras: []struct { type: []const u8, name: []const u8 },
-    conflicts: [][][]const u8,
-    precedences: [][]const u8,
-    externals: []struct { type: []const u8, name: []const u8 },
-    @"inline": [][]const u8,
-    supertypes: [][]const u8,
-};
-
 const NodeTypesFile = []const struct {
     type: []const u8,
     named: bool,
@@ -258,6 +234,7 @@ pub fn convertNodeTypes(
                 _ = try scm_write_ctx.write("))\n");
             } else {
                 _ = try std.fmt.format(scm_write_ctx, "(define-simple-node {s})\n", .{node_type_name});
+                _ = try std.fmt.format(sld_write_ctx, "  {s}\n", .{node_type_name});
             }
         }
 
@@ -309,4 +286,3 @@ pub fn main() !void {
     try convertNodeTypes(allocator, cli_args.positionals, scm_file.writer(), sld_file.writer(), out_name);
 }
 
-// TODO: create automated tests for grammars like c++
