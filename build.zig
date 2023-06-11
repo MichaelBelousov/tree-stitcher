@@ -18,11 +18,17 @@ pub fn build(b: *std.build.Builder) !void {
     // what target to build for. Here we do not override the defaults, which
     // means any target is allowed, and the default is native. Other options
     // for restricting supported target set are available.
-    const target = b.standardTargetOptions(.{});
+    const target = b.standardTargetOptions(.{
+        .default_target = std.zig.CrossTarget{
+            .cpu_arch = .wasm32,
+            .os_tag = .wasi,
+        },
+    });
 
     // Standard release options allow the person running `zig build` to select
     // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall.
     const mode = b.standardReleaseOptions();
+    //b.setPreferredReleaseMode(.ReleaseSmall);
 
     var tests = b.addTest("tree-stitcher/src/bindings.zig");
     // use `-Dtest-filter=x` to filter on tests
@@ -71,7 +77,9 @@ pub fn build(b: *std.build.Builder) !void {
     webdriver.step.dependOn(&patch_chibi_bindings_src.step);
     webdriver.linkLibC();
     webdriver.addIncludePath("thirdparty/chibi-scheme/include");
-    webdriver.addCSourceFile("tree-stitcher/src/chibi_macros.c", &([_][]const u8{"-std=c11"} ++ chibi_scheme_build.c_flags));
+    webdriver.addCSourceFile("tree-stitcher/src/chibi_macros.c",
+        [_][]const u8{"-std=c11"} ++ comptime chibi_scheme_build.getCFlagsComp(.Debug)
+    );
     webdriver.export_symbol_names = &.{
         "sexp_eval_string",
         "init", "deinit", "eval_str", "eval_stdin",
@@ -108,7 +116,12 @@ pub fn build(b: *std.build.Builder) !void {
     ts_langs.addSystemIncludePath("./thirdparty/tree-sitter/lib/include");
     // cpp
     ts_langs.addCSourceFile("thirdparty/tree-sitter-cpp/src/parser.c", &.{"-std=c99"});
-    ts_langs.addCSourceFile("thirdparty/tree-sitter-cpp/src/scanner.cc", &.{"-std=c++14", "-fno-exceptions"});
+    ts_langs.addCSourceFile("thirdparty/tree-sitter-cpp/src/scanner.cc", &.{
+        "-std=c++14",
+        "-fno-exceptions",
+        // tree_sitter_cpp_external_scanner_deserialize invokes undefined behavior
+        "-fno-sanitize=undefined"
+    });
     // python
     ts_langs.addCSourceFile("thirdparty/tree-sitter-python/src/parser.c", &.{"-std=c99"});
     ts_langs.addCSourceFile("thirdparty/tree-sitter-python/src/scanner.cc", &.{"-std=c++14", "-fno-exceptions"});
@@ -121,7 +134,7 @@ pub fn build(b: *std.build.Builder) !void {
 
     // bindings
     webdriver.addIncludePath("tree-stitcher/src"); // FIXME: organize these files
-    webdriver.addCSourceFile("tree-stitcher/tree-sitter-chibi-ffi.c", &chibi_scheme_build.c_flags);
+    webdriver.addCSourceFile("tree-stitcher/tree-sitter-chibi-ffi.c", chibi_scheme_build.getCFlagsComp(.Debug));
     // FIXME: remove ffi dependency on tree-sitter
     webdriver.addSystemIncludePath("./thirdparty/tree-sitter/lib/include");
 

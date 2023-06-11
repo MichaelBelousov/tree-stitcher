@@ -3,7 +3,12 @@
 const std = @import("std");
 const path = std.fs.path;
 
-const c_flags = .{"-std=c99", "-DNDEBUG=", "-Dfprintf(...)=", "-fno-exceptions"};
+const c_flags = .{
+    "-std=c99",
+    "-DNDEBUG=",
+    "-Dfprintf(...)=",
+    "-fno-exceptions",
+};
 
 pub fn libPkgStep(b: *std.build.Builder, rel_path: []const u8) !*std.build.LibExeObjStep {
     const lib = b.addStaticLibrary("tree-sitter", try path.join(b.allocator, &.{rel_path, "tree_sitter.zig"}));

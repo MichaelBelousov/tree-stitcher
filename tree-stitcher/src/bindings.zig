@@ -60,6 +60,7 @@ const chibi = @cImport({ @cInclude("./chibi_macros.h"); });
 
 fn query_to_str(ctx: chibi.sexp, query: chibi.sexp) []u8 {
     var str_port = chibi.sexp_open_output_string(ctx);
+    chibi.sexp_preserve_object(ctx, str_port);
     chibi.sexp_write(ctx, query, str_port);
     return chibi.sexp_get_output_string(ctx, str_port);
     //var str = std.heap.c_allocator.alloc(u8, n) catch unreachable;

@@ -1,5 +1,7 @@
 
+;; ; this causes a hang in the garbage collector?
 (import (sizr transform))
+(import (sizr langs cpp))
 
 ;; FIXME: figure out why arguments to this macro were being expanded
 ;; when defined in the library, so this can go back in the library
@@ -13,3 +15,10 @@
 
 (define in-playground #t)
 (define playground-workspace '("/target.txt"))
+
+;; (transform
+;;   ((function_definition body: (_) @body))
+;;   (@body )
+;;   playground-workspace)
+
+(transform ((identifier) @i) (@i) '("target.txt"))

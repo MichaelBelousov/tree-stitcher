@@ -1,8 +1,4 @@
-;; tree-sitter like lisp expressions for tree-stitcher augmentations
-
-(import (scheme load))
-;; FIXME: import
-(load "./src/langs/support.scm")
+;; FIXME: generate (some of) these with macros from tree-sitter's node_types.json
 
 ;fields
 (define type: 'type:)
@@ -42,29 +38,3 @@
 (define-simple-node comment) ;; hmmmm
 
 
-;; FIXME: generate these with macros
-;; FIXME: children should be applied the same way as in the transform expander
-;; (define (primitive_type name) `(primitive_type ,name))
-;; (define (number_literal number) `(number_literal ,number))
-;; (define (identifier name) `(identifier ,name))
-;; (define (parameter_list . children) `(parameter_list "(" ,@children ")")) ; switch to requiring the name
-;; (define (compound_statement . children) `(compound_statement "{" ,@children "}")) ; switch to requiring the name
-;; (define (return_statement . children) `(return_statement ,@children))
-;; (define (argument_list . children) `(argument_list ,@children))
-;; (define (call_expression . children)
-;;   `(function: ,(identifier "CALLER")
-;;     arguments: ,(argument_list)))
-;; (define (init_declarator . children)
-;;     `(init_declarator
-;;         declarator: ,(identifier "FOO") ;; TODO: implement required children
-;;         value: ,@(cdr children))) ;; TODO: required!
-;; (define (declaration . children)
-;;     `(declaration
-;;         type: ,(identifier "DECL_NAME") ;; TODO: implement required children
-;;         declarator: ,(parameter_list)))
-
-
-(display
-  (eval (function_declarator
-    declarator: (identifier "foo"))))
-(newline)

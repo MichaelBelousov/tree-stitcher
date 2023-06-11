@@ -166,9 +166,9 @@ async function main() {
 
   const inst = wasi.instantiate(module, {})
 
+  const targetFile = wasi.fs.open('/target.txt', {read: true, write: true, create: true})
+
   await loadFileSystem(wasi.fs)
-  let targetFile = wasi.fs.open('/target.txt', {read: true, write: true, create: true})
-  targetFile.writeString(targetEditor.value)
 
   handleNativeError(inst.exports.init())
 
@@ -178,6 +178,9 @@ async function main() {
   runButton.addEventListener('click', () => {
     const program = programEditor.value
     wasi.setStdinString(program)
+    targetFile.setLength(BigInt(0));
+    targetFile.seek(0);
+    targetFile.writeString(targetEditor.value)
     handleNativeError(inst.exports.eval_stdin())
     output.textContent = wasi.getStdoutString() + '\n'
   })
