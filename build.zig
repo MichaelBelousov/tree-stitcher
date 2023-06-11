@@ -18,12 +18,14 @@ pub fn build(b: *std.build.Builder) !void {
     // what target to build for. Here we do not override the defaults, which
     // means any target is allowed, and the default is native. Other options
     // for restricting supported target set are available.
-    const target = b.standardTargetOptions(.{
+    const defaultWasmTarget = b.standardTargetOptions(.{
         .default_target = std.zig.CrossTarget{
             .cpu_arch = .wasm32,
             .os_tag = .wasi,
         },
     });
+
+    const defaultNativeTarget = std.zig.CrossTarget{};
 
     // Standard release options allow the person running `zig build` to select
     // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall.
@@ -37,7 +39,7 @@ pub fn build(b: *std.build.Builder) !void {
 
     const exe = b.addExecutable("tsquery", "tree-stitcher/src/tsquery.zig");
     exe.addPackage(tree_sitter_pkg);
-    exe.setTarget(target);
+    exe.setTarget(defaultNativeTarget);
 
     const build_chibi_bindings_src = b.addSystemCommand(&.{ "chibi-ffi", "tree-stitcher/tree-sitter-chibi-ffi.scm" });
     // TODO: ask tree-sitter to tag their struct typedefs
@@ -58,11 +60,10 @@ pub fn build(b: *std.build.Builder) !void {
     query_binding.addIncludePath("tree-stitcher/src");
     query_binding.step.dependOn(&patch_chibi_bindings_src.step);
 
-    var webTarget = target;
     const webdriver = b.addExecutable("webdriver", "tree-stitcher/src/driver.zig");
     // FIXME: use setPreferredBuildMode or something
     webdriver.setBuildMode(mode);
-    webdriver.setTarget(webTarget);
+    webdriver.setTarget(defaultWasmTarget);
     webdriver.step.dependOn(&patch_chibi_bindings_src.step);
     webdriver.linkLibC();
     webdriver.addIncludePath("thirdparty/chibi-scheme/include");
@@ -135,7 +136,7 @@ pub fn build(b: *std.build.Builder) !void {
     // -ltree-sitter thirdparty/tree-sitter-cpp/src/parser.c thirdparty/tree-sitter-cpp/src/scanner.cc src/code.zig
     for ([_]*std.build.LibExeObjStep{exe, tests, query_binding}) |artifact| {
         artifact.setBuildMode(mode);
-        artifact.setTarget(target);
+        artifact.setTarget(defaultWasmTarget);
         artifact.linkLibC();
         artifact.linkSystemLibrary("c++");
         // TODO: move thirdparty up to share it more appropriately
@@ -170,7 +171,7 @@ pub fn build(b: *std.build.Builder) !void {
     run_tsquery_step.dependOn(&run_tsquery_cmd.step);
 
     const ast_helper_gen_exe = try buildAstHelperGen(b);
-    ast_helper_gen_exe.setTarget(target);
+    ast_helper_gen_exe.setTarget(defaultNativeTarget);
 
     const build_ast_helper_gen = b.step("ast-helper-gen", "Build the ast-helper-gen tool");
     build_ast_helper_gen.dependOn(&ast_helper_gen_exe.install_step.?.step);

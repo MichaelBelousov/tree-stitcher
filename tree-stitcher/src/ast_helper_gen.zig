@@ -58,31 +58,114 @@ const Grammar = struct {
     supertypes: [][]const u8,
 };
 
+const NodeTypesFile = []const struct {
+    type: []const u8,
+    named: bool,
+    subtypes: ?[]const struct { type: []const u8, named: bool },
+    fields: ?std.StringHashMap(struct {
+        multiple: bool,
+        required: bool,
+        types: []const struct { type: []const u8, named: bool },
+    }),
+    children: ?std.StringHashMap(struct {
+        multiple: bool,
+        required: bool,
+        types: []const struct { type: []const u8, named: bool },
+    }),
+};
+
 // high-level overview:
 // see if we can use the node-types.json's fields property to generate the necessary
 // ast builders
 
-pub fn convertGrammars(allocator: std.mem.Allocator, grammar_paths: []const []const u8) !void {
+pub fn convertNodeTypes(
+    allocator: std.mem.Allocator,
+    paths: []const []const u8,
+    write_ctx: anytype,
+) !void {
     var parser = json.Parser.init(allocator, false);
     defer parser.deinit();
 
-    if (grammar_paths.len == 0) {
-        std.debug.print("no grammars provided\n", .{});
+    if (paths.len == 0) {
+        std.debug.print("no paths provided\n", .{});
         return;
     }
 
-    for (grammar_paths) |rel_path| {
+    for (paths) |rel_path| {
         // TODO: don't use realpath, just some path join operation
-        const abs_path = try std.fs.cwd().realpathAlloc(allocator, rel_path);
-        const grammar_file = try FileBuffer.fromAbsPath(allocator, abs_path);
-        // TODO: use typed json parsing with Grammar type
-        const grammar = try parser.parse(grammar_file.buffer);
-        //std.debug.print("grammar: {any}\n", .{grammar.root.get("name")});
-        std.debug.print("{s}\n", .{grammar.root.Object.get("name").?.String});
-        const rules = grammar.root.Object.get("rules").?.Object;
-        const top_level_rule = rules.keys()[0];
-        _ = top_level_rule;
-        std.debug.print("{s}\n", .{grammar.root.Object.get("name").?.String});
+        const file = try FileBuffer.fromDirAndPath(allocator, std.fs.cwd(), rel_path);
+        // TODO: use typed streaming json parser in 0.11.0
+        var parsed = try parser.parse(file.buffer);
+        defer parsed.deinit();
+
+        // doesn't seem to work with record types...
+        // var parsed2 = try json.parse(
+        //     NodeTypesFile,
+        //     &std.json.TokenStream.init(file.buffer),
+        //     .{.allocator = allocator}
+        // );
+        // std.debug.print("parsed2: {any}\n", .{ parsed2 });
+
+        const node_types = switch (parsed.root) {
+            .Array => |a| a.items,
+            else => return error.RootNotArray
+        };
+
+        var field_set = std.StringHashMap(void).init(allocator);
+        defer field_set.deinit();
+
+        for (node_types) |maybe_node_type| {
+            const node_type = switch (maybe_node_type) {
+                .Object => |o| o,
+                else => return error.RootArrayContainsNonObject,
+            };
+
+            const node_type_name = switch (node_type.get("type") orelse return error.NodeTypeWithoutTypeProperty) {
+                .String => |s| s,
+                else => return error.NodeTypeTypeNotString,
+            };
+
+            const is_hidden_node = std.mem.startsWith(u8, node_type_name, "_");
+            if (is_hidden_node)
+                continue;
+
+            const is_anonymous_node = switch (node_type.get("named") orelse return error.NodeTypeWithoutNamedProperty) {
+                .Bool => |s| s,
+                else => return error.NodeTypeNamedNotBool,
+            };
+            if (is_anonymous_node)
+                continue;
+
+            const maybe_fields = if (node_type.get("fields")) |fields_val| switch (fields_val) {
+                .Object => |o| o,
+                else => return error.NodeTypeFieldsNotObject,
+            } else null;
+
+            if (maybe_fields) |fields| {
+                var field_iterator1 = fields.iterator();
+                while (field_iterator1.next()) |field| {
+                    const field_name = field.key_ptr;
+                    const field_type = field.value_ptr;
+                    _ = field_type;
+                    const had = try field_set.fetchPut(field_name.*, {});
+                    if (had != null) {
+                        _ = try std.fmt.format(write_ctx, "(define {s} '{s})\n", .{field_name.*, field_name.*});
+                    }
+                }
+
+                var field_iterator2 = fields.iterator();
+                _ = try std.fmt.format(write_ctx, "(define-complex-node {s}\n  (", .{node_type_name});
+                while (field_iterator2.next()) |field| {
+                    const field_name = field.key_ptr;
+                    //write_ctx.write("({}: {})\n  ", .{field_name.*, "(DEFAULT_TYPE_IF_1)"});
+                    _ = try std.fmt.format(write_ctx, "({s}: {s})\n  ", .{field_name.*, "(DEFAULT_TYPE_IF_1)"});
+                    //std.fmt.format(write_ctx, );
+                }
+                _ = try write_ctx.write("))\n");
+            } else {
+                _ = try std.fmt.format(write_ctx, "(define-simple-node {s})\n", .{node_type_name});
+            }
+        }
     }
 }
 
@@ -108,7 +191,7 @@ pub fn main() !void {
     if (cli_args.args.help)
         return clap.usage(std.io.getStdErr().writer(), clap.Help, &cli_params);
     
-    try convertGrammars(allocator, cli_args.positionals);
+    try convertNodeTypes(allocator, cli_args.positionals, std.io.getStdOut().writer());
 }
 
 // TODO: create automated tests for grammars like c++
