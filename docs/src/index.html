@@ -1,6 +1,87 @@
 <html>
   <body>
-    Welcome
+    <h1>Sizr Lisp</h1>
+
+    <p>
+    Sizr Lisp is a Scheme distribution focusing on the <code>Sizr</code> package, an
+    AST transformation toolkit built upon <a href="">Tree-sitter</a>. Sizr Lisp is
+    based on <a href="">Chibi Scheme</a>.
+    </p>
+
+    <p>
+    By taking Tree-sitter's existing support for selecting program source sections with
+    lisp-ish queries, and then evaluating real Scheme programs in the context of that
+    selection, we can write highly dynamic transformations to augment or replace source code.
+    </p>
+
+    <section>
+        <h2 id="selecting-code-section">Selecting code</h2>
+
+        <p>
+        The first thing we need to do to figure out how to do things with our code, is to
+        tell Sizr which parts of the code we want to talk about. This the process of
+        <em>selecting</em> code. Once we have selected some code, we can then 
+        </p>
+
+        <code lang="lisp"><pre>
+        (function_definition)
+        </pre></code>
+
+        <code lang="lisp"><pre>
+        ((function_definition) @func)
+        </pre></code>
+
+        <p>
+        Note that grouping in the selection language does not follow Lisp semantics.
+        In Lisp, <code>(function)</code> has a very different meaning than
+        <code>((function))</code>.
+        </p>
+
+        <code lang="lisp"><pre>
+        ((function_definition) @func)
+        </pre></code>
+
+        See <a href="">Tree-sitter's query language documentation</a> for a full description of
+        the query syntax. The only difference is that a true lisp can not contain a
+        <code>.</code> in arbitrary locations, so in Sizr Lisp you must use the a
+        quoted symbol instead, <code>'.</code>.
+    </section>
+
+    <section>
+        <h2 id="replacing-code-section">Replacing code</h2>
+        <p></p>
+    </section>
+
+    <section>
+        <h2 id="workspaces-section">Workspaces</h2>
+        <p>
+        A workspace is a group of interrelated files on a computer system
+        that make up a codebase. They can include program source files, program tooling
+        configuration, settings, etc. To Sizr Lisp, these are exposed as a set of files,
+        and an environment mapping. Workspaces are important so that sizr can find all
+        your code, and, eventually, update references during replacing transformations.
+        </p>
+    </section>
+
+    <section>
+        <h2 id="augmenting-code-section">Augmenting code</h2>
+        <p>
+        Not only can we select code and replace it, but we can select code and use it to
+        generate new code in our <a href="#workspaces-section">workspace</a>.
+        </p>
+    </section>
+
+    <section>
+        <h2 id="sizrs-problem-section">The problem with sizr</h2>
+        <p>
+        Well, it turns out that while having a uniform query language for multiple languages is
+        nice, those languages, especially their grammars, are very different. This means that code
+        written for one language in Sizr is often not portable to other languages.
+
+        Blah, blah, blah.
+        </p>
+    </section>
+
   </body>
 </html>
 

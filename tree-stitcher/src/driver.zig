@@ -1,15 +1,12 @@
-//! web driver of sizr-lisp, a (completey chibi-scheme-based) scheme interpreter
+//! web driver of sizr-lisp, a (completely chibi-scheme-based) scheme interpreter
 //! with the sizr primitives built in
-
-// TODO: rename owning directory to webdriver, doesn't support non-web use case yet,
-// and probably want a different directory for that
 
 const std = @import("std");
 const builtin = @import("builtin");
 const bindings = @import("./bindings.zig");
 const ts = @import("tree-sitter");
 
-// FIXME: create a package of chibi bindings
+// TODO: create a package of chibi bindings
 const chibi = @cImport({
     if (builtin.os.tag == .wasi) {
         @cDefine("SEXP_USE_DL", "0");
@@ -166,6 +163,8 @@ export fn eval_stdin() u16 {
     return 0;
 }
 
+// TODO: add full execution of files in command line arguments, also support reading from
+// piped stdin
 pub fn main() !void {
     const init_result = init();
     if (init_result != 0) {
