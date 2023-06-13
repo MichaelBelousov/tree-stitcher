@@ -48,6 +48,42 @@
     </section>
 
     <section>
+        <h2 id="understanding-scheme-section">Understanding scheme code</h2>
+
+        <p>
+        If you do not have familarity with Lisp code, then congratulations for making
+        it this far. There are many great explanations which I cannot imitate,
+        but I recommend the classic
+        <a href="https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book.html">
+        <em>Structure and Interpretation of Computer Programs</em>
+        </a>. I will give a dangerously succint primer here, which you may skip if you're
+        already familiar. Or find another if it was too dangerous.
+        </p>
+
+        <p>
+        Assuming some prior programming experience with C-like languages,
+        all we need to know for the purposes of this article is that a function call
+        in such a language, that looks like <pre>f(a, b, c)</pre>, in Lisp would look
+        like <pre>(f a b c)</pre>. By extension,
+        nested function calls work similarly. <pre>f(g(a, h()))</pre> would be
+        <pre>(f (g a (h)))<pre>. And finally, your typical arithmetic operators like <pre>+</pre>
+        have no special syntax, and must be used like the rest of the functions, yielding code
+        like <pre>(+ (/ 1 2))<pre>.
+        </p>
+
+        So then let's look at a tree-sitter query and think about how we might "evaluate it"
+        as Lisp code.
+
+        <code lang="lisp"><pre>
+        (function_definition)
+        </pre></code>
+
+        <code lang="lisp"><pre>
+        ((function_definition) @func)
+        </pre></code>
+    </section>
+
+    <section>
         <h2 id="replacing-code-section">Replacing code</h2>
         <p></p>
     </section>
