@@ -1,123 +1,119 @@
-<html>
-  <body>
-    <h1>Sizr Lisp</h1>
+<h1>Sizr Lisp</h1>
+<p>Sizr Lisp is a Scheme distribution focusing on the <code>Sizr</code> package, an
+AST transformation toolkit built upon <a href="">Tree-sitter</a>. Sizr Lisp is
+based on <a href="">Chibi Scheme</a>.</p>
+<p>By taking Tree-sitter's existing support for selecting program source sections with
+lisp-ish queries, and then evaluating real Scheme programs in the context of that
+selection, we can write highly dynamic transformations to augment or replace source code.</p>
+<h2>Selecting code</h2>
+<p>The first thing we need to do to figure out how to do things with our code, is to
+tell Sizr which parts of the code we want to talk about. This the process of
+<em>selecting</em> code. Once we have selected some code, we can then </p>
+<p><code>lisp
+(function_definition)</code></p>
+<p><code>lisp
+((function_definition) @func)</code></p>
+<p>Note that grouping in the selection language does not follow Lisp semantics.
+In Lisp, <code>(function)</code> has a very different meaning than. More on that in
+<a href="#understanding-scheme-code">understanding scheme code</a>, below.
+<code>((function))</code>.</p>
+<p><code>((function_definition) @func)</code></p>
+<p>See <a href="/FIXME">tree-sitter's query language documentation</a> for a full description of
+the query syntax. The only limitation of Sizr's query syntax support is that a true lisp
+can not contain a <code>.</code> in arbitrary locations, so in Sizr Lisp you must use the a
+quoted symbol instead, <code>'.</code>.</p>
+<h2>Understanding scheme code</h2>
+<p>If you do not have familarity with Lisp code, then congratulations for making
+it this far. There are many great explanations which I cannot imitate,
+but I recommend the classic
+<a href="https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book.html&quot;">Structure and Interpretation of Computer Programs</a>.
+I will give a dangerously succinct primer here, which you may skip if you're
+already familiar. Or find another if it was too dangerously succinct.</p>
+<p>Assuming some prior programming experience with C-like languages,
+all we need to know for the purposes of this article is that a function call
+in such a language, that looks like <code>f(a, b, c)</code>, in Lisp would look
+like <code>(f a b c)</code>. By extension,
+nested function calls work similarly. <code>f(g(a, h()))</code> would be
+<code>(f (g a (h)))</code>. And finally, your typical arithmetic operators like <code>+</code>, <code>*</code>, <code>-</code>, etc.,
+have no special syntax, and must be used like the rest of the functions, yielding code
+like <code>(+ (/ 1 2))</code>.</p>
+<p>So then let's look at a tree-sitter query and think about how we might "evaluate it"
+as Lisp code. We will quickly learn there is some magic involved in all but the most
+basic examples.</p>
+<p><code>(binary_expression (number_literal) "+" (number_literal))</code></p>
+<p>While this is a valid tree-sitter query, it's not strictly "evaluable", we do not know
+<em>what number</em> our <code>number_literal</code>s are. For this reason, in the replace or augment clauses,
+of a Sizr transform, you have to specify the token as a string (or number) argument to many
+AST leaf nodes:</p>
+<p><code>(binary_expression (number_literal 4) "+" (number_literal 5))</code></p>
+<p>For simplicity sake, I elided the field names, which optionally prefix important nodes. Fields
+are specific to the language grammar, defined in that particular language's Sizr library, for
+the <code>binary_expression</code> node we have the following fields:</p>
+<p><code>(binary_expression
+  left: (number_literal)
+  operator: "+"
+  right: (number_literal))</code></p>
+<p>So now that we can build some simple syntaxes, let's take a look at how we can replace pieces
+of captured syntaxes. Take the following transform.</p>
+<p>```
+(transform 
+  ;; the selection
+  (binary_expression
+    left: (number_literal) @num
+    right: (string_literal))</p>
+<p>;; the replacement
+  (binary_expression
+    left: (call_expression (identifier "String") (@num)))</p>
+<p>;; the workspace
+  my-workspace)
+```</p>
+<p>While the above expression demonstrates a weakness in Sizr, that will be ignored for now
+and elaborated upon <a href="#the-problem-with-sizr">below</a>.</p>
+<p>Note that in Tree-sitter's query language, a <code>@capture</code> applies to the form directly preceding it.
+Also note that I <em>did not specify</em> the <code>operator:</code> field, meaning this will match any binary expression,
+on such literals, regardless of operator, be it <code>4 + "hello"</code> or <code>4 == "hello"</code>. Finally, notice
+that the replacement clause contains a reference to <code>@num</code>, which will be <em>expanded</em> as part of the
+evaluation of the replacement. In fact, you can think of <code>@num</code> as a function evaluating
+in the context of each selection, returning the value that had been captured. If we were running this over
+the code <code>1 + "hello"" || 2 == "world"</code> (great example, I know), then our replacement clause
+would evaluate over <em>both</em> number/string binary expressions separately:</p>
+<pre>
+<span style="color:red">1 + "hello"</span> || <span style="color:blue">2 + "world"</span>
+</pre>
 
-    <p>
-    Sizr Lisp is a Scheme distribution focusing on the <code>Sizr</code> package, an
-    AST transformation toolkit built upon <a href="">Tree-sitter</a>. Sizr Lisp is
-    based on <a href="">Chibi Scheme</a>.
-    </p>
+<p>So in the first, red, source section, replacement <code>(@num)</code> would evaluate to
+<span style="color:red"><code>(number_literal 1)</code></span>,
+and in the second, it would evaluate to
+<span style="color:blue"><code>(number_literal 2)</code></span>. So if for the first source section,
+we expand the capture, and then fill in the specified fields replacements, we would get a
+replacement of:</p>
+<p><code>lisp
+;; the replacement
+(binary_expression
+  left: (call_expression (identifier "String") (number_literal "1"))
+  operator: "+"
+  right: (string_literal "hello")))</code></p>
+<p>Which, perhaps you can guess, is fed to the Sizr transform's inner logic, and serialized
+to code code looking like:</p>
+<pre>
+<span style="color:red">String(1) + "hello"</span> || <span style="color:blue">String(2) + "world"</span>
+</pre>
 
-    <p>
-    By taking Tree-sitter's existing support for selecting program source sections with
-    lisp-ish queries, and then evaluating real Scheme programs in the context of that
-    selection, we can write highly dynamic transformations to augment or replace source code.
-    </p>
-
-    <section>
-        <h2 id="selecting-code-section">Selecting code</h2>
-
-        <p>
-        The first thing we need to do to figure out how to do things with our code, is to
-        tell Sizr which parts of the code we want to talk about. This the process of
-        <em>selecting</em> code. Once we have selected some code, we can then 
-        </p>
-
-        <code lang="lisp"><pre>
-        (function_definition)
-        </pre></code>
-
-        <code lang="lisp"><pre>
-        ((function_definition) @func)
-        </pre></code>
-
-        <p>
-        Note that grouping in the selection language does not follow Lisp semantics.
-        In Lisp, <code>(function)</code> has a very different meaning than
-        <code>((function))</code>.
-        </p>
-
-        <code lang="lisp"><pre>
-        ((function_definition) @func)
-        </pre></code>
-
-        See <a href="">Tree-sitter's query language documentation</a> for a full description of
-        the query syntax. The only difference is that a true lisp can not contain a
-        <code>.</code> in arbitrary locations, so in Sizr Lisp you must use the a
-        quoted symbol instead, <code>'.</code>.
-    </section>
-
-    <section>
-        <h2 id="understanding-scheme-section">Understanding scheme code</h2>
-
-        <p>
-        If you do not have familarity with Lisp code, then congratulations for making
-        it this far. There are many great explanations which I cannot imitate,
-        but I recommend the classic
-        <a href="https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/full-text/book/book.html">
-        <em>Structure and Interpretation of Computer Programs</em>
-        </a>. I will give a dangerously succint primer here, which you may skip if you're
-        already familiar. Or find another if it was too dangerous.
-        </p>
-
-        <p>
-        Assuming some prior programming experience with C-like languages,
-        all we need to know for the purposes of this article is that a function call
-        in such a language, that looks like <pre>f(a, b, c)</pre>, in Lisp would look
-        like <pre>(f a b c)</pre>. By extension,
-        nested function calls work similarly. <pre>f(g(a, h()))</pre> would be
-        <pre>(f (g a (h)))<pre>. And finally, your typical arithmetic operators like <pre>+</pre>
-        have no special syntax, and must be used like the rest of the functions, yielding code
-        like <pre>(+ (/ 1 2))<pre>.
-        </p>
-
-        So then let's look at a tree-sitter query and think about how we might "evaluate it"
-        as Lisp code.
-
-        <code lang="lisp"><pre>
-        (function_definition)
-        </pre></code>
-
-        <code lang="lisp"><pre>
-        ((function_definition) @func)
-        </pre></code>
-    </section>
-
-    <section>
-        <h2 id="replacing-code-section">Replacing code</h2>
-        <p></p>
-    </section>
-
-    <section>
-        <h2 id="workspaces-section">Workspaces</h2>
-        <p>
-        A workspace is a group of interrelated files on a computer system
-        that make up a codebase. They can include program source files, program tooling
-        configuration, settings, etc. To Sizr Lisp, these are exposed as a set of files,
-        and an environment mapping. Workspaces are important so that sizr can find all
-        your code, and, eventually, update references during replacing transformations.
-        </p>
-    </section>
-
-    <section>
-        <h2 id="augmenting-code-section">Augmenting code</h2>
-        <p>
-        Not only can we select code and replace it, but we can select code and use it to
-        generate new code in our <a href="#workspaces-section">workspace</a>.
-        </p>
-    </section>
-
-    <section>
-        <h2 id="sizrs-problem-section">The problem with sizr</h2>
-        <p>
-        Well, it turns out that while having a uniform query language for multiple languages is
-        nice, those languages, especially their grammars, are very different. This means that code
-        written for one language in Sizr is often not portable to other languages.
-
-        Blah, blah, blah.
-        </p>
-    </section>
-
-  </body>
-</html>
-
+<p>And finally, the last piece of the puzzle, armed with the knowledge that <code>@capture</code>'s are treated
+as functions in the replacement code, that will return the capture value in each replacement context,
+you may be happy to know that this function can take arguments to replace its own fields</p>
+<h2>Replacing code</h2>
+<h2>Workspaces</h2>
+<p>A workspace is a group of interrelated files on a computer system
+that make up a codebase. They can include program source files, program tooling
+configuration, settings, etc. To Sizr Lisp, these are exposed as a set of files,
+and an environment mapping. Workspaces are important so that sizr can find all
+your code, and, eventually, update references during replacing transformations.</p>
+<h2>Augmenting code</h2>
+<p>Not only can we select code and replace it, but we can select code and use it to
+generate new code in our <a href="workspaces">workspace</a>.</p>
+<h2>The problem with sizr</h2>
+<p>Well, it turns out that while having a uniform query language for multiple languages is
+nice, those languages, especially their grammars, are very different. This means that code
+written for one language in Sizr is often not portable to other languages.</p>
+<p>Blah, blah, blah.</p>

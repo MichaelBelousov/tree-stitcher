@@ -73,14 +73,6 @@ fn loadSizrBindings(in_chibi_ctx: chibi.sexp) !void {
 export fn init() u16 {
     const chibi_transform_funcs = @import("./chibi_transform.zig");
     _ = chibi_transform_funcs;
-    // const args = std.process.argsAlloc(allocator) catch |e| {
-    //     std.debug.print("proc arg alloc err: {}\n", .{e});
-    //     return @errorToInt(e);
-    // };
-    // defer std.process.argsFree(allocator, args);
-    // for (args) |arg| {
-    //     std.debug.print("arg: {s}\n", .{arg});
-    // }
 
     preopens = std.fs.wasi.PreopenList.init(allocator);
     // // populate causes integer overflow somehow,
@@ -163,6 +155,20 @@ export fn eval_stdin() u16 {
     return 0;
 }
 
+pub fn interpretProgramSources(srcs: []const []const u8) !void {
+    // TODO: implement streaming read (mmap on posix)
+    for (srcs) |src| {
+        const file = @import("./FileBuffer.zig").fromDirAndPath(allocator, std.fs.cwd(), src);
+        // FIXME: use new context for each file
+        const result = chibi.sexp_eval_string(chibi_ctx, file.buffer.ptr, @intCast(c_int, file.buffer.len), null);
+        const is_excep = chibi._sexp_exceptionp(result) != 0;
+        if (is_excep) {
+            print_chibi_value(result);
+            return error.SchemeProgramException;
+        }
+    }
+}
+
 // TODO: add full execution of files in command line arguments, also support reading from
 // piped stdin
 pub fn main() !void {
@@ -174,6 +180,15 @@ pub fn main() !void {
     }
 
     defer deinit();
+
+    const args = std.process.argsAlloc(allocator) catch |e| {
+        std.debug.print("proc arg alloc err: {}\n", .{e});
+        return @errorToInt(e);
+    };
+    defer std.process.argsFree(allocator, args);
+
+    if (args.len > 1)
+        return interpretProgramSources(args[1..]);
 
     // FIXME: temp loop
     while (true)
