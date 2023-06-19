@@ -422,6 +422,21 @@ export fn transform_ExecQueryResult(
             const transform_ctx = chibi.sexp_make_eval_context(ctx, null, match_env, 0, 0);
             // FIXME: destroying this derived context destroys the parent?
             //defer _ = chibi.sexp_destroy_context(transform_ctx);
+
+            const EvalImpl = struct {
+                match_env: chibi.sexp,
+                transform_ctx: chibi.sexp,
+
+                pub fn eval(self: @This(), exp: chibi.sexp) chibi.sexp {
+                    var cdr = exp;
+                    while (cdr != chibi.SEXP_NULL) : (cdr = chibi._sexp_cdr(cdr))
+                        const arg_expr = chibi._sexp_car(exp);
+                        const arg = chibi._sexp_eval(transform_ctx, arg_expr, match_env);
+                    }
+                }
+            };
+
+            // fill the ctx
             var capture_iter = query_ctx.capture_name_to_index.iterator();
             while (capture_iter.next()) |capture| {
                 // FIXME: why did I add +1 here? for the @ or a sentinel? there's a special alloc for sentinel...
@@ -437,10 +452,10 @@ export fn transform_ExecQueryResult(
                 const result = chibi.sexp_eval_string(transform_ctx, node_str.ptr, -1, match_env);
                 const symbol = chibi.sexp_intern(transform_ctx, name.ptr, @intCast(c_long, name.len));
                 _ = chibi.sexp_env_define(transform_ctx, match_env, symbol, result);
+                // FIXME: errdefer gc release temps
                 if (chibi._sexp_exceptionp(result) != 0)
                     return result;
             }
-
 
             if (std.os.getenv("DEBUG") != null)
                 chibi._sexp_debug(ctx, "before eval:", transformed_ast);
