@@ -9,10 +9,12 @@
   (syntax-rules ()
     ((transform from to paths)
        (let* ((query-str (expr->string (quote from)))
-              (query-str-rooted (string-append "(" query-str " @__root)"))
+              (query-str-rooted (string-append query-str " @root"))
               (r (exec_query query-str-rooted paths)))
        (transform_ExecQueryResult r (quote to))))))
 
 (define in-playground #t)
 (define playground-workspace '("/target.txt"))
 
+(display "hello!")
+(newline)

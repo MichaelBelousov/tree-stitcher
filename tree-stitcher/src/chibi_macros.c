@@ -11,6 +11,7 @@ sexp _sexp_symbol_to_string(sexp ctx, sexp s) { return sexp_symbol_to_string(ctx
 void _sexp_debug(sexp ctx, const char* message, sexp s) { sexp_debug(ctx, message, s); }
 sexp _sexp_eval(sexp ctx, sexp s, sexp env) { return sexp_eval(ctx, s, env); }
 sexp _sexp_context_env(sexp ctx) { return sexp_context_env(ctx); }
+sexp _sexp_make_env(sexp ctx) { return sexp_make_env(ctx); }
 int _sexp_pairp(sexp s) { return sexp_pairp(s); }
 int _sexp_symbolp(sexp s) { return sexp_symbolp(s); }
 int _sexp_nullp(sexp s) { return sexp_nullp(s); }

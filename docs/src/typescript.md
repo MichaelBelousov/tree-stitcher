@@ -85,7 +85,7 @@ several of them.
     body: (append (declaration (identifier "type")
                                "="
                                (string_literal (ast->string @name)))
-                  @body))
+                  (@body)))
   (ts-workspace "."))
 
 (transform

@@ -97,15 +97,13 @@ export fn init() u16 {
     if (chibi._sexp_exceptionp(
             chibi.sexp_load_standard_env(chibi_ctx, null, chibi.SEXP_SEVEN)
     ) != 0) {
-        std.debug.print("sexp_load_standard_env err\n", .{});
         return @errorToInt(error.ChibiLoadErr);
     }
 
     if (chibi._sexp_exceptionp(
             chibi.sexp_load_standard_ports(chibi_ctx, null, chibi.stdin, chibi.stdout, chibi.stdout, 1)
     ) != 0) {
-        std.debug.print("sexp_load_standard_ports err\n", .{});
-        return @errorToInt(error.ChibiLoadErr);
+        return @errorToInt(error.ChibiLoadPortsErr);
     }
 
     load_cpp();
@@ -156,10 +154,9 @@ export fn eval_stdin() u16 {
 }
 
 pub fn interpretProgramSources(srcs: []const []const u8) !void {
-    // TODO: implement streaming read (mmap on posix)
     for (srcs) |src| {
-        const file = @import("./FileBuffer.zig").fromDirAndPath(allocator, std.fs.cwd(), src);
-        // FIXME: use new context for each file
+        const file = try @import("./FileBuffer.zig").fromDirAndPath(allocator, std.fs.cwd(), src);
+        // FIXME: see how chibi-scheme's main.c does this by calling load-module
         const result = chibi.sexp_eval_string(chibi_ctx, file.buffer.ptr, @intCast(c_int, file.buffer.len), null);
         const is_excep = chibi._sexp_exceptionp(result) != 0;
         if (is_excep) {
@@ -181,10 +178,7 @@ pub fn main() !void {
 
     defer deinit();
 
-    const args = std.process.argsAlloc(allocator) catch |e| {
-        std.debug.print("proc arg alloc err: {}\n", .{e});
-        return @errorToInt(e);
-    };
+    const args = try std.process.argsAlloc(allocator);
     defer std.process.argsFree(allocator, args);
 
     if (args.len > 1)

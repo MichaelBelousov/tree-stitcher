@@ -142,7 +142,24 @@ to code code looking like:
 
 And finally, the last piece of the puzzle, armed with the knowledge that `@capture`'s are treated
 as functions in the replacement code, that will return the capture value in each replacement context,
-you may be happy to know that this function can take arguments to replace its own fields
+it is of note that you may pass arguments to this function, mimicking a subset of the tree-sitter
+query language. Particularly, evaluating `(@capture field: replacement)` with field markers denoting
+field replacements with arbitrary expressions. Alternatively, and mutually exclusive to passing
+fields, you may pass the full array of child nodes, like `(@capture child1 child2)`. Using this,
+we can perform some more complex replacements.
+
+```lisp
+;; FIXME: do something fancy
+(transform 
+  (binary_expression
+    left: (number_literal) @num
+    right: (string_literal))
+
+  (binary_expression
+    left: (call_expression (identifier "String") (@num)))
+
+  my-workspace)
+```
 
 ## Replacing code
 

@@ -10,6 +10,7 @@ sexp _sexp_symbol_to_string(sexp ctx, sexp s);
 void _sexp_debug(sexp ctx, const char* message, sexp s);
 sexp _sexp_eval(sexp ctx, sexp s, sexp env);
 sexp _sexp_context_env(sexp ctx);
+sexp _sexp_make_env(sexp ctx);
 int _sexp_pairp(sexp p);
 int _sexp_symbolp(sexp s);
 int _sexp_nullp(sexp s);
