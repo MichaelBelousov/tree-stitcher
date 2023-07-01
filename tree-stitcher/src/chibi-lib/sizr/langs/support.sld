@@ -2,6 +2,7 @@
   (import
     (scheme base)
     (scheme eval)
+    (scheme write) ; display
     (chibi string)
     (srfi 125)) ;; hash tables
   (export 

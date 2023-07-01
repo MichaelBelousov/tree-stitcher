@@ -412,6 +412,8 @@ export fn transform_ExecQueryResult(
             // use sexp_env_import?
             // FIXME: destroy?
             const match_env = chibi._sexp_make_env(ctx);
+            // FIXME: not well documented by chibi
+            chibi._set_sexp_env_parent(match_env, env);
 
             // if I do it this way, then @capture must be a function that merges its arguments into
             // its value, which is basically what I already have in lisp with make-complex-node, no?

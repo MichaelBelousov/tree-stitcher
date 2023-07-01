@@ -156,6 +156,8 @@ pub fn interpretProgramSources(srcs: []const []const u8) !void {
         var lines_iter = std.mem.split(u8, file.buffer, "\n");
         while (lines_iter.next()) |line| {
             // FIXME: see how chibi-scheme's main.c does this by calling load-module
+            if (line.ptr[0] == ';' or line.len == 0)
+                continue;
             const result = eval_str(line.ptr, @intCast(c_int, line.len));
             const is_excep = chibi._sexp_exceptionp(result) != 0;
             if (is_excep) {

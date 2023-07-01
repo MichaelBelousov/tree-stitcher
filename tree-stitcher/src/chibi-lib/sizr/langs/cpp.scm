@@ -194,7 +194,7 @@
   ))
 (define-complex-node function_definition
   ((body: "")
-  (declarator: (operator_cast))
+  (declarator:)
   (type: "")
   ))
 (define label: 'label:)
