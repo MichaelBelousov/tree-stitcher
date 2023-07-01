@@ -402,7 +402,6 @@ export fn transform_ExecQueryResult(
             };
             i = end;
 
-
             const transformed_ast = switch(MatchTransformer.transform_match(query_ctx, ctx, match.*, transform)) {
                 .ok => |v| v,
                 // FIXME: need a finalizer for this allocated memory
@@ -410,31 +409,17 @@ export fn transform_ExecQueryResult(
                     ctx, sexp_self, e.format(std.heap.c_allocator).ptr, transform),
             };
 
-
             // use sexp_env_import?
             // FIXME: destroy?
             const match_env = chibi._sexp_make_env(ctx);
 
             // if I do it this way, then @capture must be a function that merges its arguments into
             // its value, which is basically what I already have in lisp with make-complex-node, no?
-            // but it also must use node_to_ast to produce the stringified ast...
+            // FIXME: but it also must use node_to_ast to produce the stringified ast...
 
             const transform_ctx = chibi.sexp_make_eval_context(ctx, null, match_env, 0, 0);
             // FIXME: destroying this derived context destroys the parent?
             //defer _ = chibi.sexp_destroy_context(transform_ctx);
-
-            const EvalImpl = struct {
-                match_env: chibi.sexp,
-                transform_ctx: chibi.sexp,
-
-                pub fn eval(self: @This(), exp: chibi.sexp) chibi.sexp {
-                    var cdr = exp;
-                    while (cdr != chibi.SEXP_NULL) : (cdr = chibi._sexp_cdr(cdr))
-                        const arg_expr = chibi._sexp_car(exp);
-                        const arg = chibi._sexp_eval(transform_ctx, arg_expr, match_env);
-                    }
-                }
-            };
 
             // fill the ctx
             var capture_iter = query_ctx.capture_name_to_index.iterator();
@@ -523,6 +508,7 @@ export fn transform_ExecQueryResult(
     return string_result;
 }
 
+// FIXME: remove duplicate impl
 // FIXME: completely ignoring the garbage collector all over the place... going to be bad
 export fn transform_ExecQueryResult2(query_ctx: *bindings.ExecQueryResult, transform: chibi.sexp, ctx: chibi.sexp) chibi.sexp {
     const env = chibi._sexp_context_env(ctx);

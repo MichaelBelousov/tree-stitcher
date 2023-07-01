@@ -134,13 +134,10 @@ fn print_chibi_value(val: chibi.sexp) void {
     }
 }
 
-
-// TODO: remove...
-// this blog demonstrates how I should implement usage of this function in the browser with wasmer
-// https://mnt.io/2018/08/22/from-rust-to-beyond-the-webassembly-galaxy/
-export fn eval_str(buf_ptr: [*]const u8, _buf_len: i32) void {
+export fn eval_str(buf_ptr: [*]const u8, _buf_len: i32) chibi.sexp {
     const result = chibi.sexp_eval_string(chibi_ctx, buf_ptr, @intCast(c_int, _buf_len), null);
     print_chibi_value(result);
+    return result;
 }
 
 // TODO: should probably handle stdin chunks the way that `main` does currently
@@ -156,12 +153,14 @@ export fn eval_stdin() u16 {
 pub fn interpretProgramSources(srcs: []const []const u8) !void {
     for (srcs) |src| {
         const file = try @import("./FileBuffer.zig").fromDirAndPath(allocator, std.fs.cwd(), src);
-        // FIXME: see how chibi-scheme's main.c does this by calling load-module
-        const result = chibi.sexp_eval_string(chibi_ctx, file.buffer.ptr, @intCast(c_int, file.buffer.len), null);
-        const is_excep = chibi._sexp_exceptionp(result) != 0;
-        if (is_excep) {
-            print_chibi_value(result);
-            return error.SchemeProgramException;
+        var lines_iter = std.mem.split(u8, file.buffer, "\n");
+        while (lines_iter.next()) |line| {
+            // FIXME: see how chibi-scheme's main.c does this by calling load-module
+            const result = eval_str(line.ptr, @intCast(c_int, line.len));
+            const is_excep = chibi._sexp_exceptionp(result) != 0;
+            if (is_excep) {
+                return error.SchemeProgramException;
+            }
         }
     }
 }
@@ -182,10 +181,14 @@ pub fn main() !void {
     defer std.process.argsFree(allocator, args);
 
     if (args.len > 1)
-        return interpretProgramSources(args[1..]);
+        return interpretProgramSources(args[1..])
+    else
+        return repl();
+}
 
+pub fn repl() !void {
     // FIXME: temp loop
-    while (true)
+    outer: while (true)
     {
         var line_buff: [1024]u8 = undefined;
         // TODO: use readline lib and also wait for parens to match
@@ -196,10 +199,13 @@ pub fn main() !void {
         var total_bytes_read: usize = 0;
         {
             // HACK: temporary solution for multi-line input, doesn't handle quotes containing parentheses
+            // also doesn't handle multiple tokens submitted on one line
             var lpar_count: usize = 0;
             var rpar_count: usize = 0;
             while (true) {
                 const bytes_read = try std.io.getStdIn().read(line_buff[total_bytes_read..]);
+                const eof = bytes_read == 0;
+                if (eof) break :outer;
                 // NOTE: would be cool to scan these simultaneously, I wonder if the compiler will do that already
                 lpar_count += std.mem.count(u8, line_buff[total_bytes_read..total_bytes_read + bytes_read], "(");
                 rpar_count += std.mem.count(u8, line_buff[total_bytes_read..total_bytes_read + bytes_read], ")");
@@ -208,12 +214,13 @@ pub fn main() !void {
             }
         }
 
+        // how can I block
         const line = line_buff[0..total_bytes_read];
 
         if (std.mem.eql(u8, "exit", line)) {
             break;
         } else {
-            eval_str(&line_buff, @intCast(i32, total_bytes_read));
+            _ = eval_str(&line_buff, @intCast(i32, total_bytes_read));
         }
     }
 }
